@@ -7,56 +7,66 @@
 using namespace cpl::util::network ;
 
 
-int main( int , char const* const* const argv ) {
-    pid_t pid, sid;
+int main(int argc, char* argv[]) {
 
-    /* Fork off the parent process */
-    pid = fork();
-    if (pid < 0) {
-        /* Log failure (use syslog if possible) */
+    if(argc<4){
+        cout << "Too few arguments. Usage: ognDataLogger filters /data/storage/path/ server.address" << endl;
         exit(EXIT_FAILURE);
     }
-    /* If we got a good PID, then
-       we can exit the parent process. */
+
+    pid_t pid, sid;
+
+    // Fork off the parent process
+    pid = fork();
+    if (pid < 0) {
+        // Log failure (use syslog if possible)
+        exit(EXIT_FAILURE);
+    }
+    // If we got a good PID, then we can exit the parent process.
     if (pid > 0) {
         exit(EXIT_SUCCESS);
     }
 
-    /* Change the file mode mask */
+    // Change the file mode mask
     umask(0);
 
-    /* Open any logs here */
+    // Open any logs here
     ofstream logFile;
-    logFile.open("/home/dkulpa/ognLogger.log");
+    logFile.open(string(argv[2])+"ognDataLogger.log");
     if(!logFile.is_open()){
         exit(EXIT_FAILURE);
     }
 
-    /* Create a new SID for the child process */
+    // Create a new SID for the child process
     sid = setsid();
     if (sid < 0) {
-        /* Log any failure */
+        // Log any failure
         logFile << "Error creating child process SID" << endl;
         exit(EXIT_FAILURE);
     }
 
-    /* Change the current working directory */
+    logFile << "SID: " << sid << endl;
+    logFile << "PID: " << pid << endl;
+
+    // Change the current working directory
     if ((chdir("/")) < 0) {
-        /* Log any failure here */
+        logFile << "Cannot change root directory" << endl;
         exit(EXIT_FAILURE);
     }
 
-    /* Close out the standard file descriptors */
+    // Close out the standard file descriptors
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
 
-    OgnLogger ognLogger(&logFile);
-    LogPusher logPusher(ognLogger.getLogQueue(), ognLogger.getQueueMutex());
+    OgnLogger ognLogger(&logFile, argv[2], argv[1]);
+    LogPusher logPusher(&ognLogger, argv[3]);
 
-    ognLogger.start();
+    ognLogger.init();
+    logPusher.start();
 
-    while(ognLogger.isRunning()){
-
+    while(1){
+        ognLogger.exec();
+        usleep(1000);
     }
 }

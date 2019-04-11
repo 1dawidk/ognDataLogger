@@ -1,7 +1,6 @@
 #ifndef OGNDATALOGGER_OGNLOGGER_H
 #define OGNDATALOGGER_OGNLOGGER_H
 
-#include "dkulpaclibs/misc/Thread.h"
 #include <algorithm>
 #include <exception>
 #include <iostream>
@@ -11,6 +10,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <stdio.h>
 
 #include <cassert>
 
@@ -23,27 +23,30 @@
 
 using namespace cpl::util::network;
 
-class OgnLogger : public Thread {
+class OgnLogger {
 public:
-    OgnLogger(std::ostream *os);
-    std::vector<std::string>* getLogQueue();
-    pthread_mutex_t* getQueueMutex();
-protected:
-    void onStart() override;
-    void onRun() override;
-    void onStop() override;
+    OgnLogger(std::ostream *logStream, const char *dataDir, const char *filter);
+    pthread_mutex_t* getDataMutex();
+    std::string getDataDir();
+    void readDataFile(std::vector<std::string> &fileLines);
+
+    void init();
+    void exec();
+    void resetDataFileStream();
 
 private:
     cpl::ogn::aprs_parser *parser;
     std::istream *is;
-    std::ostream *os;
+    std::ostream *logStream;
+    std::ofstream dataStream;
     double const utc=-1;
     std::ostream* keepalive;
     cpl::ogn::aircraft_db acdb;
     double utc_parsed;
-    std::vector<std::string> logQueue;
+    std::string filter;
+    std::string dataDir;
 
-    pthread_mutex_t queueMutex;
+    pthread_mutex_t dataMutex;
 
     const std::string DEFAULT_HOST    = "aprs.glidernet.org";
     const std::string DEFAULT_SERVICE = "14580"             ;
