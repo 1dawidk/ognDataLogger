@@ -62,7 +62,7 @@ void OgnLogger::exec() {
     }
 
     if ('#' == line[0]) {
-        //(*logStream) << "KEEPALIVE " << line.substr(2, std::string::npos) << std::endl;
+        //](*logStream) << "KEEPALIVE " << line.substr(2, std::string::npos) << std::endl;
 
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;

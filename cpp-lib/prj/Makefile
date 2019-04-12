@@ -50,30 +50,19 @@ INCLUDES =                                 	\
 
 OBJECTS =					        \
 	$(OBJ_DIR)/sys/file.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/sys/logger.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/sys/server.$(OBJ_EXTENSION)          \
 	$(OBJ_DIR)/sys/syslogger.$(OBJ_EXTENSION)       \
 	$(OBJ_DIR)/sys/util.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/audio.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/blowfish.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/cgi.$(OBJ_EXTENSION)	                \
-	$(OBJ_DIR)/command_line.$(OBJ_EXTENSION)	\
-	$(OBJ_DIR)/dispatch.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/geodb.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/geometry.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/gnss.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/http.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/igc.$(OBJ_EXTENSION)	                \
-	$(OBJ_DIR)/interpolation.$(OBJ_EXTENSION)	\
 	$(OBJ_DIR)/map.$(OBJ_EXTENSION)	                \
 	$(OBJ_DIR)/math-util.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/nmea.$(OBJ_EXTENSION)	       	\
 	$(OBJ_DIR)/network.$(OBJ_EXTENSION)	       	\
 	$(OBJ_DIR)/ogn.$(OBJ_EXTENSION)	          	\
 	$(OBJ_DIR)/registry.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/util.$(OBJ_EXTENSION)		\
-	$(OBJ_DIR)/random.$(OBJ_EXTENSION)		\
-	$(OBJ_DIR)/varlist.$(OBJ_EXTENSION)
+	$(OBJ_DIR)/util.$(OBJ_EXTENSION)
+
 
 # Windoze specific parts.
 WINDOWS_OBJECTS =                                                       \
