@@ -4,6 +4,7 @@ project(ognDataLogger)
 set(CMAKE_CXX_STANDARD 14)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cpp-lib/cmake/")
 
 find_package(ogn_lib REQUIRED)
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
