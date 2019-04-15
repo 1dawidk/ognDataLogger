@@ -17,3 +17,9 @@ mkdir ./build
 cd ./build
 cmake ..
 make
+
+
+# edit the file /etc/locale.gen
+# uncomment the line:
+# en_US.UTF-8 UTF-8
+# finally run the command "sudo locale-gen"

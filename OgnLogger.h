@@ -17,12 +17,13 @@
 #include "cpp-lib/gnss.h"
 #include "cpp-lib/ogn.h"
 #include "cpp-lib/util.h"
+#include "DebugLog.h"
 
 using namespace cpl::util::network;
 
 class OgnLogger {
 public:
-    OgnLogger(std::ostream *logStream, const char *dataDir, const char *filter);
+    OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter);
     pthread_mutex_t* getDataMutex();
     std::string getDataDir();
     void readDataFile(std::vector<std::string> &fileLines);
@@ -34,7 +35,7 @@ public:
 private:
     cpl::ogn::aprs_parser *parser;
     std::istream *is;
-    std::ostream *logStream;
+    DebugLog *debugLog;
     std::ofstream dataStream;
     double const utc=-1;
     std::ostream* keepalive;

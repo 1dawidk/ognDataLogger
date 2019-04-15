@@ -1,10 +1,12 @@
 #include "OgnLogger.h"
 
-OgnLogger::OgnLogger(std::ostream *logStream, const char *dataDir, const char *filter) {
-    this->logStream= logStream;
+OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter) {
+    this->debugLog= debugLog;
     this->filter= filter;
     this->dataDir= dataDir;
-    *(this->logStream) << "Start ogn logger" << std::endl;
+
+
+    debugLog->write("OgnLogger", "Start logging...");
 }
 
 pthread_mutex_t *OgnLogger::getDataMutex() {
@@ -97,7 +99,7 @@ void OgnLogger::exec() {
         if (cpl::ogn::parse_aprs_station(line, stat, utc_now)) {
 
         } else {
-            (*logStream) << "# WARNING: Couldn't parse: " << line << std::endl;
+            debugLog->write("OgnLogger", string("# WARNING: Couldn't parse: " + line).c_str());
         }
     }
 }

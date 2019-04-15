@@ -2,6 +2,7 @@
 
 #include "OgnLogger.h"
 #include "LogPusher.h"
+#include "DebugLog.h"
 
 
 using namespace cpl::util::network ;
@@ -30,27 +31,24 @@ int main(int argc, char* argv[]) {
     // Change the file mode mask
     umask(0);
 
+
     // Open any logs here
-    ofstream logFile;
-    logFile.open(string(argv[2])+"ognDataLogger.log");
-    if(!logFile.is_open()){
-        exit(EXIT_FAILURE);
-    }
+    DebugLog debugLog(string(argv[2])+"ognDataLogger.log");
 
     // Create a new SID for the child process
     sid = setsid();
     if (sid < 0) {
         // Log any failure
-        logFile << "Error creating child process SID" << endl;
+        debugLog.write("Init", "Error creating child process SID");
         exit(EXIT_FAILURE);
     }
 
-    logFile << "SID: " << sid << endl;
-    logFile << "PID: " << pid << endl;
+    debugLog.write("SID", to_string(sid).c_str());
+    debugLog.write("PID", to_string(pid).c_str());
 
     // Change the current working directory
     if ((chdir("/")) < 0) {
-        logFile << "Cannot change root directory" << endl;
+        debugLog.write("Init", "Cannot change root directory");
         exit(EXIT_FAILURE);
     }
 
@@ -59,8 +57,8 @@ int main(int argc, char* argv[]) {
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
 
-    OgnLogger ognLogger(&logFile, argv[2], argv[1]);
-    LogPusher logPusher(&ognLogger, argv[3]);
+    OgnLogger ognLogger(&debugLog, argv[2], argv[1]);
+    LogPusher logPusher(&debugLog, &ognLogger, argv[3]);
 
     ognLogger.init();
     logPusher.start();

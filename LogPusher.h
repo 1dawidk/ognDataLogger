@@ -14,7 +14,7 @@ using namespace std;
 
 class LogPusher : public Thread {
 public:
-    LogPusher(OgnLogger *ognLogger, const char* server);
+    LogPusher(DebugLog *debugLog, OgnLogger *ognLogger, const char* server);
 
 protected:
     void onStart() override;
@@ -23,7 +23,7 @@ protected:
 
 private:
     string dataDir;
-    pthread_mutex_t *queueMutex;
+    DebugLog *debugLog;
     const char* serverAdr;
     OgnLogger *ognLogger;
     uint8_t lastHour;

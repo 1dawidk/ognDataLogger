@@ -1,10 +1,9 @@
 #include <iostream>
 #include "LogPusher.h"
 
-LogPusher::LogPusher(OgnLogger *ognLogger, const char* server) {
+LogPusher::LogPusher(DebugLog *debugLog, OgnLogger *ognLogger, const char* server) {
     this->ognLogger= ognLogger;
     this->dataDir= ognLogger->getDataDir();
-    this->queueMutex= ognLogger->getDataMutex();
     this->serverAdr= server;
 }
 
@@ -57,7 +56,7 @@ void LogPusher::onRun() {
         curl_easy_perform(curlHandle);
         curl_easy_cleanup(curlHandle);
 
-        cout << endl;
+        debugLog->write("LogPusher", "Sent to server");
 
         lastHour= now;
     }
