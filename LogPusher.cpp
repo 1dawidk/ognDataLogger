@@ -5,6 +5,7 @@ LogPusher::LogPusher(DebugLog *debugLog, OgnLogger *ognLogger, const char* serve
     this->ognLogger= ognLogger;
     this->dataDir= ognLogger->getDataDir();
     this->serverAdr= server;
+    this->debugLog= debugLog;
 }
 
 void LogPusher::onStart() {
@@ -13,7 +14,6 @@ void LogPusher::onStart() {
 
 void LogPusher::onRun() {
     uint8_t now= (uint8_t)Clock::getHour();
-
 
     if(lastHour!=now /*&& (now==10 || now==22)*/ ) {
 
