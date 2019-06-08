@@ -1,0 +1,10 @@
+#ifndef OGNDATALOGGER_STILLALIVE_H
+#define OGNDATALOGGER_STILLALIVE_H
+
+
+class StillAlive {
+
+};
+
+
+#endif //OGNDATALOGGER_STILLALIVE_H

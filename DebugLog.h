@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include "dkulpaclibs/misc/Thread.h"
+#include "dkulpaclibs/misc/Clock.h"
 
 using namespace std;
 

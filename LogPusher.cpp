@@ -50,7 +50,11 @@ void LogPusher::onRun() {
         curl_easy_setopt(curlHandle, CURLOPT_URL, serverAdr);
         curl_easy_setopt(curlHandle, CURLOPT_HTTPHEADER, headerlist);
         curl_easy_setopt(curlHandle, CURLOPT_HTTPPOST, post);
+#ifdef BACKGROUND_MODE
         curl_easy_setopt(curlHandle, CURLOPT_VERBOSE, 0);
+#else
+        curl_easy_setopt(curlHandle, CURLOPT_VERBOSE, 1);
+#endif
 
         // Perform curl
         curl_easy_perform(curlHandle);

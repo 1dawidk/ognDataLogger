@@ -12,6 +12,9 @@ DebugLog::DebugLog(string debugFileName) {
 
 void DebugLog::write(const char *tag, const char *msg) {
     pthread_mutex_lock(&streamMutex);
-    debugStream << tag << ": " << msg << endl;
+    char ts[16];
+    sprintf(ts, "%02d-%02d-%04d %02d:%02d", Clock::getDay(), Clock::getMonth(),
+            Clock::getYear(), Clock::getHour(), Clock::getMinutes());
+    debugStream << ts << " | " << tag << ": " << msg << endl;
     pthread_mutex_unlock(&streamMutex);
 }

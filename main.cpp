@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+#ifdef BACKGROUND_MODE
     pid_t pid, sid;
 
     // Fork off the parent process
@@ -30,11 +31,12 @@ int main(int argc, char* argv[]) {
 
     // Change the file mode mask
     umask(0);
+#endif
 
 
     // Open any logs here
     DebugLog debugLog(string(argv[2])+"ognDataLogger.log");
-
+#ifdef BACKGROUND_MODE
     // Create a new SID for the child process
     sid = setsid();
     if (sid < 0) {
@@ -45,6 +47,7 @@ int main(int argc, char* argv[]) {
 
     debugLog.write("SID", to_string(sid).c_str());
     debugLog.write("PID", to_string(pid).c_str());
+#endif
 
     // Change the current working directory
     if ((chdir("/")) < 0) {
@@ -52,10 +55,12 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+#ifdef BACKGROUND_MODE
     // Close out the standard file descriptors
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
+#endif
 
     OgnLogger ognLogger(&debugLog, argv[2], argv[1]);
     LogPusher logPusher(&debugLog, &ognLogger, argv[3]);
