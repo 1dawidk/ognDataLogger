@@ -30,7 +30,6 @@ void LogPusher::onRun() {
         sendFile.close();
 
 
-
         CURL *curlHandle = curl_easy_init();
         curl_httppost *post=NULL;
         curl_httppost *lastpost=NULL;
