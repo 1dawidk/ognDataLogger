@@ -37,6 +37,7 @@ void LogPusher::onRun() {
         // Create http header
         struct curl_slist *headerlist = NULL;
         headerlist = curl_slist_append(headerlist, "Content-Type: multipart/form-data");
+        headerlist = curl_slist_append(headerlist, "Connection: close");
 
         // Prepare post form
         curl_formadd(&post, &lastpost,
@@ -57,7 +58,7 @@ void LogPusher::onRun() {
 
         // Perform curl
         curl_easy_perform(curlHandle);
-        //curl_easy_cleanup(curlHandle);
+        curl_easy_cleanup(curlHandle);
 
         debugLog->write("LogPusher", "Sent to server");
 
