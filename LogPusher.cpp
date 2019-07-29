@@ -58,7 +58,7 @@ void LogPusher::onRun() {
 
         // Perform curl
         curl_easy_perform(curlHandle);
-        curl_easy_cleanup(curlHandle);
+        //curl_easy_cleanup(curlHandle);
 
         debugLog->write("LogPusher", "Sent to server");
 
