@@ -15,7 +15,7 @@ void LogPusher::onStart() {
 void LogPusher::onRun() {
     uint8_t now= (uint8_t)Clock::getHour();
 
-    if(lastHour!=now /*&& (now==10 || now==22)*/ ) {
+    if( 1 /*lastHour!=now*/ /*&& (now==10 || now==22)*/ ) {
 
         vector<string> fileLines;
         ognLogger->readDataFile(fileLines);
