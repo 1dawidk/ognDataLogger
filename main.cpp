@@ -55,6 +55,8 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+
+
 #ifdef BACKGROUND_MODE
     // Close out the standard file descriptors
     close(STDIN_FILENO);

@@ -1138,6 +1138,8 @@ bool mem_equal( T const& t1 , T const& t2 ) {
   void const* const a1 = reinterpret_cast< void const* >( &t1 ) ;
   void const* const a2 = reinterpret_cast< void const* >( &t2 ) ;
 
+  printf("STUPID MOMENT: %d, %d, %d", a1, a2, sizeof(T));
+
   return 0 == memcmp( a1 , a2 , sizeof( T ) ) ;
 }
 
