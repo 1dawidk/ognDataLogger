@@ -81,7 +81,7 @@ struct geodb {
   double radius() const { return radius_; }
 
   // Returns database name
-  double name  () const { return dbname_; }
+  const std::string& name() const { return dbname_; }
 
   // Returns number of stored DB elements
   long size() const { return tr.size(); }
