@@ -19,7 +19,6 @@ ln -s def.platform.linux def.platform
 make
 
 
-
 cd ../..
 mkdir ./build
 cd ./build
