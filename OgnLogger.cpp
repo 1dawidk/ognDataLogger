@@ -9,10 +9,6 @@ OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter
     debugLog->write("OgnLogger", "Start logging...");
 }
 
-pthread_mutex_t *OgnLogger::getDataMutex() {
-    return &dataMutex;
-}
-
 std::string OgnLogger::getDataDir() {
     return dataDir;
 }

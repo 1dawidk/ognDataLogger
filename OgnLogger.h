@@ -24,7 +24,6 @@ using namespace cpl::util::network;
 class OgnLogger {
 public:
     OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter);
-    pthread_mutex_t* getDataMutex();
     std::string getDataDir();
     void readDataFile(std::vector<std::string> &fileLines);
 
