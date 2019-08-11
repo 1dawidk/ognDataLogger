@@ -68,8 +68,13 @@ int main(int argc, char* argv[]) {
     ognLogger.init();
     logPusher.start();
 
-    while(1){
+    // Exit at 23:15
+    while( (uint8_t)Clock::getHour()!=23 || (uint8_t)Clock::getMinutes()!=15 ){
         ognLogger.exec();
         usleep(1000);
     }
+
+    logPusher.stop();
+
+    return 0;
 }
