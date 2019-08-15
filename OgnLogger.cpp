@@ -107,3 +107,12 @@ void OgnLogger::resetDataFileStream() {
 
     dataStream.open(dataDir+"ognDataLogger.data");
 }
+
+
+void OgnLogger::finish() {
+    pthread_mutex_lock(&dataMutex);
+    dataStream.close();
+    pthread_mutex_unlock(&dataMutex);
+
+    debugLog->write("OgnLogger", "Finish [ DONE ]");
+}

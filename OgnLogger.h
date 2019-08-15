@@ -30,6 +30,7 @@ public:
     void init();
     void exec();
     void resetDataFileStream();
+    void finish();
 
 private:
     cpl::ogn::aprs_parser *parser;

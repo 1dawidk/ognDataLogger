@@ -69,12 +69,15 @@ int main(int argc, char* argv[]) {
     logPusher.start();
 
     // Exit at 23:15
-    while( (uint8_t)Clock::getHour()!=23 || (uint8_t)Clock::getMinutes()!=15 ){
+    while( (uint8_t)Clock::getHour()<22 ){
         ognLogger.exec();
         usleep(1000);
     }
 
     logPusher.stop();
+    ognLogger.finish();
+    debugLog.write("main()", "Shutdown. Bye bye :(");
+    debugLog.finish();
 
     return 0;
 }

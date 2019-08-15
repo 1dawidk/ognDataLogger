@@ -18,3 +18,9 @@ void DebugLog::write(const char *tag, const char *msg) {
     debugStream << ts << " | " << tag << ": " << msg << endl;
     pthread_mutex_unlock(&streamMutex);
 }
+
+void DebugLog::finish() {
+    pthread_mutex_lock(&streamMutex);
+    debugStream.close();
+    pthread_mutex_unlock(&streamMutex);
+}

@@ -13,6 +13,8 @@ public:
     DebugLog(string debugFileName);
 
     void write(const char *tag, const char *msg);
+
+    void finish();
 private:
     ofstream debugStream;
     pthread_mutex_t streamMutex;
