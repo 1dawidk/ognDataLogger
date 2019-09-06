@@ -55,27 +55,26 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-#ifdef BACKGROUND_MODE
+//#ifdef BACKGROUND_MODE
     // Close out the standard file descriptors
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
-#endif
+//#endif
 
     OgnLogger ognLogger(&debugLog, argv[2], argv[1]);
     LogPusher logPusher(&debugLog, &ognLogger, argv[3]);
 
-    ognLogger.init();
+    ognLogger.start();
     logPusher.start();
 
-    // Exit at 23:15
+    // Exit at 22:00
     while( (uint8_t)Clock::getHour()<22 ){
-        ognLogger.exec();
-        usleep(1000);
+        usleep(10000);
     }
 
     logPusher.stop();
-    ognLogger.finish();
+    ognLogger.kill();
     debugLog.write("main()", "Shutdown. Bye bye :(");
     debugLog.finish();
 

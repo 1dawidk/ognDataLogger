@@ -18,19 +18,21 @@
 #include "cpp-lib/ogn.h"
 #include "cpp-lib/util.h"
 #include "DebugLog.h"
+#include "dkulpaclibs/misc/Thread.h"
 
 using namespace cpl::util::network;
 
-class OgnLogger {
+class OgnLogger : public Thread{
 public:
     OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter);
     std::string getDataDir();
     void readDataFile(std::vector<std::string> &fileLines);
-
-    void init();
-    void exec();
     void resetDataFileStream();
-    void finish();
+
+protected:
+    void onStart() override;
+    void onRun() override;
+    void onStop() override;
 
 private:
     cpl::ogn::aprs_parser *parser;

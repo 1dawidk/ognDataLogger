@@ -9,29 +9,8 @@ OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter
     debugLog->write("OgnLogger", "Start logging...");
 }
 
-std::string OgnLogger::getDataDir() {
-    return dataDir;
-}
 
-void OgnLogger::readDataFile(std::vector<std::string> &fileLines) {
-    pthread_mutex_lock(&dataMutex);
-
-    std::string line;
-    std::ifstream inDataFile;
-    inDataFile.open(dataDir+"ognDataLogger.data");
-
-    while ( getline (inDataFile,line) )
-    {
-        fileLines.push_back(line);
-    }
-
-    inDataFile.close();
-
-    resetDataFileStream();
-    pthread_mutex_unlock(&dataMutex);
-}
-
-void OgnLogger::init() {
+void OgnLogger::onStart() {
     std::unique_ptr<connection> c;
 
     double const ddb_query_interval = cpl::ogn::default_ddb_query_interval();
@@ -51,7 +30,7 @@ void OgnLogger::init() {
     dataStream.open(dataDir+"ognDataLogger.data");
 }
 
-void OgnLogger::exec() {
+void OgnLogger::onRun() {
     std::string line;
     std::getline(*is, line);
 
@@ -82,7 +61,7 @@ void OgnLogger::exec() {
         std::stringstream ss;
 
         ss << acft.first.substr(4) << " " << static_cast<cpl::gnss::position_time const&>(acft.second.pta) << " "
-            << acft.second.mot.course << " " << acft.second.mot.speed;
+           << acft.second.mot.course << " " << acft.second.mot.speed;
 
         if(acft.first.find("ogn")!=std::string::npos && acft.second.mot.speed>4) {
             pthread_mutex_lock(&dataMutex);
@@ -100,19 +79,41 @@ void OgnLogger::exec() {
     }
 }
 
+void OgnLogger::onStop() {
+    pthread_mutex_lock(&dataMutex);
+    dataStream.close();
+    pthread_mutex_unlock(&dataMutex);
+
+    debugLog->write("OgnLogger", "Finish [ DONE ]");
+}
+
+
+std::string OgnLogger::getDataDir() {
+    return dataDir;
+}
+
+void OgnLogger::readDataFile(std::vector<std::string> &fileLines) {
+    pthread_mutex_lock(&dataMutex);
+
+    std::string line;
+    std::ifstream inDataFile;
+    inDataFile.open(dataDir+"ognDataLogger.data");
+
+    while ( getline (inDataFile,line) )
+    {
+        fileLines.push_back(line);
+    }
+
+    inDataFile.close();
+
+    resetDataFileStream();
+    pthread_mutex_unlock(&dataMutex);
+}
+
 void OgnLogger::resetDataFileStream() {
     if(dataStream.is_open()){
         dataStream.close();
     }
 
     dataStream.open(dataDir+"ognDataLogger.data");
-}
-
-
-void OgnLogger::finish() {
-    pthread_mutex_lock(&dataMutex);
-    dataStream.close();
-    pthread_mutex_unlock(&dataMutex);
-
-    debugLog->write("OgnLogger", "Finish [ DONE ]");
 }
