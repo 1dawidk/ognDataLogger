@@ -7,6 +7,8 @@ OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter
 
 
     debugLog->write("OgnLogger", "Start logging...");
+    dataMutex= PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_unlock(&dataMutex);
 }
 
 
@@ -26,8 +28,9 @@ void OgnLogger::onStart() {
 
     utc_parsed = 0;
 
-    dataMutex= PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_lock(&dataMutex);
     dataStream.open(dataDir+"ognDataLogger.data");
+    pthread_mutex_unlock(&dataMutex);
 }
 
 void OgnLogger::onRun() {
