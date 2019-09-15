@@ -57,9 +57,9 @@ int main(int argc, char* argv[]) {
 
 //#ifdef BACKGROUND_MODE
     // Close out the standard file descriptors
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO);
+    //close(STDIN_FILENO);
+    //close(STDOUT_FILENO);
+    //close(STDERR_FILENO);
 //#endif
 
     OgnLogger ognLogger(&debugLog, argv[2], argv[1]);

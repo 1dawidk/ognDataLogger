@@ -10,6 +10,7 @@ LogPusher::LogPusher(DebugLog *debugLog, OgnLogger *ognLogger, const char* serve
 
 void LogPusher::onStart() {
     lastHour= 120;
+    debugLog->write("LogPusher", "Start [ DONE ]");
 }
 
 void LogPusher::onRun() {
@@ -17,8 +18,10 @@ void LogPusher::onRun() {
 
     if( lastHour!=now ) {
 
+        debugLog->write("LogPusher", "Check data file [ ... ]");
         vector<string> fileLines;
         ognLogger->readDataFile(fileLines);
+        debugLog->write("LogPusher", "Check data file [ DONE ]");
 
         if( fileLines.size() ) {
 
