@@ -65,16 +65,16 @@ int main(int argc, char* argv[]) {
     OgnLogger ognLogger(&debugLog, argv[2], argv[1]);
     LogPusher logPusher(&debugLog, &ognLogger, argv[3]);
 
-    ognLogger.start();
+    ognLogger.init();
     logPusher.start();
 
     // Exit at 22:00
     while( (uint8_t)Clock::getHour()<22 ){
-        usleep(10000);
+        ognLogger.exec();
     }
 
-    logPusher.stop();
-    ognLogger.kill();
+    logPusher.kill();
+    ognLogger.finish();
     debugLog.write("main()", "Shutdown. Bye bye :(");
     debugLog.finish();
 

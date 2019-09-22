@@ -22,17 +22,15 @@
 
 using namespace cpl::util::network;
 
-class OgnLogger : public Thread{
+class OgnLogger{
 public:
     OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter);
     std::string getDataDir();
     void readDataFile(std::vector<std::string> &fileLines);
     void resetDataFileStream();
-
-protected:
-    void onStart() override;
-    void onRun() override;
-    void onStop() override;
+    void init();
+    void exec();
+    void finish();
 
 private:
     cpl::ogn::aprs_parser *parser;

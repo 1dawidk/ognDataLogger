@@ -12,7 +12,7 @@ OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter
 }
 
 
-void OgnLogger::onStart() {
+void OgnLogger::init() {
     std::unique_ptr<connection> c;
 
     double const ddb_query_interval = cpl::ogn::default_ddb_query_interval();
@@ -33,7 +33,7 @@ void OgnLogger::onStart() {
     pthread_mutex_unlock(&dataMutex);
 }
 
-void OgnLogger::onRun() {
+void OgnLogger::exec() {
     std::string line;
     std::getline(*is, line);
 
@@ -66,7 +66,7 @@ void OgnLogger::onRun() {
         ss << acft.first.substr(4) << " " << static_cast<cpl::gnss::position_time const&>(acft.second.pta) << " "
            << acft.second.mot.course << " " << acft.second.mot.speed;
 
-        if(acft.first.find("ogn")!=std::string::npos && acft.second.mot.speed>4) {
+        if(acft.second.mot.speed>4) {
             pthread_mutex_lock(&dataMutex);
             dataStream << ss.str() << std::endl;
             pthread_mutex_unlock(&dataMutex);
@@ -82,7 +82,7 @@ void OgnLogger::onRun() {
     }
 }
 
-void OgnLogger::onStop() {
+void OgnLogger::finish() {
     pthread_mutex_lock(&dataMutex);
     dataStream.close();
     pthread_mutex_unlock(&dataMutex);
