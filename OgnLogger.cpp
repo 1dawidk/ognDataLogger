@@ -61,12 +61,11 @@ void OgnLogger::exec() {
                            (utc <= -2 ? utc_parsed : cpl::util::utc());
     if (parser->parse_aprs_aircraft(line, acft, utc_now)) {
 
-        std::stringstream ss;
+        if(acft.first.find("ogn")!=std::string::npos && acft.second.mot.speed>4) {
+            std::stringstream ss;
+            ss << acft.first.substr(4) << " " << static_cast<cpl::gnss::position_time const&>(acft.second.pta) << " "
+               << acft.second.mot.course << " " << acft.second.mot.speed;
 
-        ss << acft.first.substr(4) << " " << static_cast<cpl::gnss::position_time const&>(acft.second.pta) << " "
-           << acft.second.mot.course << " " << acft.second.mot.speed;
-
-        if(acft.second.mot.speed>4) {
             pthread_mutex_lock(&dataMutex);
             dataStream << ss.str() << std::endl;
             pthread_mutex_unlock(&dataMutex);
