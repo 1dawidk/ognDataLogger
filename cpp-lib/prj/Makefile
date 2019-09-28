@@ -4,7 +4,6 @@
 # TODO: 
 # - tests and applications must be subdirectories of src, then the three build
 #   rules can be collapsed into one.
-# - Get rid of the symlinks, use += on SOURCES instead (or similar).
 #
 # Usage:
 # Release build:
@@ -50,19 +49,30 @@ INCLUDES =                                 	\
 
 OBJECTS =					        \
 	$(OBJ_DIR)/sys/file.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/sys/logger.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/sys/server.$(OBJ_EXTENSION)          \
 	$(OBJ_DIR)/sys/syslogger.$(OBJ_EXTENSION)       \
 	$(OBJ_DIR)/sys/util.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/audio.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/blowfish.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/cgi.$(OBJ_EXTENSION)	                \
+	$(OBJ_DIR)/command_line.$(OBJ_EXTENSION)	\
+	$(OBJ_DIR)/dispatch.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/geodb.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/geometry.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/gnss.$(OBJ_EXTENSION)	        \
 	$(OBJ_DIR)/http.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/igc.$(OBJ_EXTENSION)	                \
+	$(OBJ_DIR)/interpolation.$(OBJ_EXTENSION)	\
 	$(OBJ_DIR)/map.$(OBJ_EXTENSION)	                \
 	$(OBJ_DIR)/math-util.$(OBJ_EXTENSION)	        \
+	$(OBJ_DIR)/nmea.$(OBJ_EXTENSION)	       	\
 	$(OBJ_DIR)/network.$(OBJ_EXTENSION)	       	\
 	$(OBJ_DIR)/ogn.$(OBJ_EXTENSION)	          	\
 	$(OBJ_DIR)/registry.$(OBJ_EXTENSION)	        \
-	$(OBJ_DIR)/util.$(OBJ_EXTENSION)
-
+	$(OBJ_DIR)/util.$(OBJ_EXTENSION)		\
+	$(OBJ_DIR)/random.$(OBJ_EXTENSION)		\
+	$(OBJ_DIR)/varlist.$(OBJ_EXTENSION)
 
 # Windoze specific parts.
 WINDOWS_OBJECTS =                                                       \
@@ -155,35 +165,11 @@ endif
 endif
 
 
-ifdef DONT_KNOW_SYMLINKS
-LINK = cp -r
-else
-LINK = ln -sf
-endif
-
-
-symlinks:
-	( cd $(INCLUDE_CPP_LIB) ; rm -f platform    )
-	( cd $(INCLUDE_CPP_LIB) ; rm -f platform_rt )
-ifeq ($(POSIX_STUFF),yes)
-ifeq ($(POSIX1B_STUFF),yes)
-	( cd $(INCLUDE_CPP_LIB) ; $(LINK) posix1b platform_rt )
-else
-	( cd $(INCLUDE_CPP_LIB) ; $(LINK) posix   platform_rt )
-endif
-	( cd $(INCLUDE_CPP_LIB) ; $(LINK) posix   platform    )
-endif
-ifeq ($(WINDOWS_STUFF),yes)
-	( cd $(INCLUDE_CPP_LIB) ; $(LINK) windows platform_rt )
-	( cd $(INCLUDE_CPP_LIB) ; $(LINK) windows platform    )
-endif
-
-
 SOURCES = $(subst .o,.cpp,$(OBJECTS))
 
 directories: $(OBJ_DIR) $(OBJ_SUBDIRS) $(BIN_DIR) 
 
-$(CPP_LIB_LIBRARY): symlinks $(OBJECTS)
+$(CPP_LIB_LIBRARY): $(OBJECTS)
 	$(CREATELIB)
 	$(RANLIB) $(CPP_LIB_LIBRARY)
 
@@ -225,8 +211,6 @@ clean:
 	rm -f $(TEST_DIR)/surface.out.*
 	rm -f $(TEST_DIR)/*.crypt
 	rm -f $(TEST_DIR)/*.stackdump
-	rm -rf $(INCLUDE_CPP_LIB)/platform
-	rm -rf $(INCLUDE_CPP_LIB)/platform_rt
 
 distclean: clean
 	rm -f def.compiler

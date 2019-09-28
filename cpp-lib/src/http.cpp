@@ -20,9 +20,15 @@
 
 #include "cpp-lib/sys/network.h"
 #include "cpp-lib/sys/syslogger.h"
+#include "cpp-lib/error.h"
+#include "cpp-lib/util.h"
+
+#include "boost/algorithm/string.hpp"
+
 
 using namespace cpl::util;
 using namespace cpl::util::network;
+using namespace cpl::util::log;
 
 namespace {
 
@@ -37,8 +43,12 @@ bool blank( std::string const& s ) {
 
 }
 
+void throw_get_parse_error(const std::string& what) {
+  cpl::util::throw_error("CPL HTTP GET request parser: " + what);
+}
+
 std::string default_user_agent() {
-  return "CPL/0.9.1 httpclient/0.9.1 (EXPERIMENTAL)";
+  return "KISS CPL/0.9.1 httpclient/0.9.1 (EXPERIMENTAL)";
 }
 
 
@@ -91,6 +101,91 @@ void wget1(
 
 } // end anonymous namespace
 
+// https://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2.2
+// "HTTP/1.1 defines the sequence CR LF as the end-of-line marker 
+// for all protocol elements except the entity-body"
+const char* const cpl::http::endl = "\r\n";
+
+std::string cpl::http::default_server_identification() {
+  return "KISS/CPL httpd/0.9.1 (Linux)";
+}
+
+void cpl::http::write_content_type(
+    std::ostream& os, const std::string& ct, const std::string& cs) {
+  os << "Content-Type: " << ct
+     << "; charset="     << cs
+     << cpl::http::endl;
+}
+
+void cpl::http::write_content_type_json(
+    std::ostream& os, const std::string& cs) {
+  cpl::http::write_content_type(os, "application/json", cs);
+}
+
+void cpl::http::write_content_type_text(
+    std::ostream& os, const std::string& cs) {
+  cpl::http::write_content_type(os, "text/plain", cs);
+}
+
+void cpl::http::write_content_type_csv(
+    std::ostream& os, const std::string& cs) {
+  cpl::http::write_content_type(os, "text/csv", cs);
+}
+
+std::string cpl::http::content_type_from_file_name(const std::string& name) {
+         if (boost::ends_with(name, ".html")) {
+    return "text/html";
+  } else if (boost::ends_with(name, ".txt")) {
+    return "text/plain";
+  } else {
+    return "application/octet-stream";
+  }
+}
+
+void cpl::http::write_date(std::ostream& os, double now) {
+  if (now < 0) {
+    now = cpl::util::utc();
+  }
+
+  os << "Date: " << cpl::util::format_datetime(now)
+     << cpl::http::endl;
+}
+
+void cpl::http::write_connection(std::ostream& os, const std::string& what) {
+  os << "Connection: " << what << cpl::http::endl;
+}
+
+void cpl::http::write_server(std::ostream& os, const std::string& server) {
+  os << "Server: " << server << cpl::http::endl;
+}
+
+void cpl::http::write_http_header_200(
+    std::ostream& os,
+    const std::string& ct,
+    double now,
+    const std::string& server_id) {
+  os << "HTTP/1.1 200 OK" << cpl::http::endl;
+  cpl::http::write_date        (os, now      );
+  cpl::http::write_server      (os, server_id);
+  cpl::http::write_connection  (os, "close"  );
+  cpl::http::write_content_type(os, ct       );
+
+  os << cpl::http::endl;
+}
+
+void cpl::http::write_http_header_404(
+    std::ostream& os,
+    const std::string& reason,
+    double now,
+    const std::string& server_id) {
+  os << "HTTP/1.1 404 Not Found (" << reason << ")" << cpl::http::endl;
+  cpl::http::write_date        (os, now      );
+  cpl::http::write_server      (os, server_id);
+  cpl::http::write_connection  (os, "close"  );
+
+  os << cpl::http::endl;
+}
+
 void cpl::http::wget( std::ostream& log, std::ostream& os , std::string url ,
                       double const timeout ) {
 
@@ -136,4 +231,61 @@ void cpl::http::wget( std::ostream& log, std::ostream& os , std::string url ,
 
   wget1( log, os , path , timeout , host , port ) ;
 
+}
+
+cpl::http::get_request
+cpl::http::parse_get_request(
+    const std::string& first_line,
+    std::istream& is,
+    std::ostream* log) {
+  cpl::http::get_request ret;
+  std::string line = first_line;
+  boost::trim(line);
+  {
+    std::istringstream iss(line);
+    std::string get, ver;
+    iss >> get >> ret.abs_path >> ver;
+    if (not iss) {
+      ::throw_get_parse_error("Malformed request: " + line);
+    }
+
+    if ("GET" != get) {
+      ::throw_get_parse_error("Not a GET request: " + line);
+    }
+
+    // Parse HTTP/x.y
+    std::vector<std::string> ver1;
+    cpl::util::split(ver1, ver, "/");
+
+    if (2 != ver1.size() or "HTTP" != ver1.at(0)) {
+      ::throw_get_parse_error("Bad version: " + ver);
+    }
+
+    ret.version = ver1.at(1);
+  }
+
+  while (std::getline(is, line)) {
+    boost::trim(line);
+    if (line.empty()) {
+      break;
+    }
+
+    const auto hh = cpl::util::split_colon_blank(line);
+
+           if ("User-Agent" == hh.first) {
+      ret.user_agent = hh.second;
+    } else if ("Host"       == hh.first) {
+      ret.host       = hh.second;
+    } else if ("Accept"     == hh.first) {
+      ret.accept     = hh.second;
+    } else {
+      if (nullptr != log) {
+        *log << prio::WARNING
+             << "Ignoring HTTP header: " << line
+             << std::endl;
+      }
+    }
+  }
+
+  return ret;
 }

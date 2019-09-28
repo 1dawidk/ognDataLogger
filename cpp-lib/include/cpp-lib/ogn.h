@@ -31,6 +31,7 @@
 #ifndef CPP_LIB_OGN_H
 #define CPP_LIB_OGN_H
 
+#include "cpp-lib/database.h"
 #include "cpp-lib/gnss.h"
 #include "cpp-lib/map.h"
 #include "cpp-lib/math-util.h"
@@ -41,7 +42,8 @@
 #include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 
-#include <iostream>
+#include <iosfwd>
+#include <limits>
 #include <thread>
 
 namespace cpl {
@@ -52,13 +54,34 @@ namespace bmi = boost::multi_index;
 
 // FLARM random hopping, still?!
 short constexpr ID_TYPE_RANDOM = 0;
+/// A (FLARM or other) device with an ICAO address programmed
 short constexpr ID_TYPE_ICAO   = 1;
+/// A FLARM device with the FLARM device address (DDxxxx etc.)
 short constexpr ID_TYPE_FLARM  = 2;
+/// An OGN tracker device with the OGN tracker address
 short constexpr ID_TYPE_OGN    = 3;
 
 // https://pilotaware.com/
-// TODO: Implement.  Use when IDs start with "PAW".
+// A PilotAware device (PAWxxxxxx)
 short constexpr ID_TYPE_PILOT_AWARE = 10;
+
+// https://www.flymaster.net/
+// A FLYMASTER device (FMTxxxxxx, paragliders)
+short constexpr ID_TYPE_FLYMASTER = 11;
+
+// FANET (FNTxxxxxx)
+short constexpr ID_TYPE_FANET = 12;
+
+// NAVITER.  These pretend to be FLARM, but appear to be injected
+// somehow (5/2019).
+short constexpr ID_TYPE_NAVITER = 13;
+
+// SPOT.  Also pretends to be a FLARM?!
+// (5/2019).
+short constexpr ID_TYPE_SPOT = 14;
+
+// Unknown ID type, should probably be ignored
+short constexpr ID_TYPE_UNKNOWN = -1;
 
 // http://www.ediatec.ch/pdf/FLARM_DataportManual_v6.00E.pdf
 short constexpr VEHICLE_TYPE_GLIDER      = 1;
@@ -76,6 +99,10 @@ short constexpr VEHICLE_TYPE_AIRSHIP     = 12;
 short constexpr VEHICLE_TYPE_UAV         = 13;
 // 14 not assigned
 short constexpr VEHICLE_TYPE_STATIC      = 15;
+
+// Unknown vehicle type, should probably be ignored
+short constexpr VEHICLE_TYPE_UNKNOWN     = -1;
+
 
 /*
 On Tue, 29 Aug 2017, Angel Casado wrote:
@@ -121,22 +148,40 @@ If the software can not find who was the relaying unit, it sets a
 generic RELAY* id. 
 */
 
-// Internal data structure, may be occasionally useful outside
-struct q_construct {
-  // TOCALL, see above
-  // May include version, e.g. OGADSB-1
+/// Info on how this was received in the APRS network
+struct aprs_info {
+  /// TOCALL, see above
+  /// May include version, e.g. OGADSB-1
   std::string tocall;
 
-  // RELAY---generic or the specific ID, with asterisk.
-  // Empty if received directly.
+  /// RELAY---generic or the specific ID, with asterisk.
+  /// Empty if received directly.
   std::string relay;
 
-  // Where does it come from: "SPOT", (OGN station name), "ADSBNET" (see above)
+  /// Where was this received / does it come from: 
+  /// "SPOT", "ADSBNET" (see above).  In most cases, it will be 
+  /// the OGN station name.
   std::string from;
 };
 
-// Parses a q construct, returns true on success
-bool parse_q_construct(const std::string&, q_construct&);
+/// DEPRECATED.  For backwards compatibility only.
+using q_construct = aprs_info;
+
+/// Parses a qAS construct, returns true on success
+bool parse_qas_construct(const std::string&, aprs_info&);
+
+/// Deprecated, backwards compatibility only.  Use parse_qas_construct()
+/// instead.
+inline bool parse_q_construct(const std::string& s, aprs_info& qc) {
+  return parse_qas_construct(s, qc);
+}
+
+/// Attempts to determine an ID type from the station ID (i.e.
+/// the first string in an APRS message, e.g. FLR....,
+/// PAW...., FMT.... and associated info in aprs_info.  Intended
+/// use is when the ID isn't present in an id.... field.
+/// This is very much work in progress.
+short id_type(const std::string& station_id, const aprs_info&);
 
 // OGN station information:
 // - Network name
@@ -225,21 +270,27 @@ struct versions {
 
 // Radio signal reception information
 struct rx_info {
-  rx_info() : rssi(0), frequency_deviation(0) {}
-  // Received by (station name)
+  // DEPRECATED: Use aprs.from instead.
   std::string received_by;
 
-  // Received signal strength indication [dB]
-  double rssi;
+  // Received signal strength indication at last hop
+  // (i.e. ground station) [dB]
+  // A large negative value means: Not defined.
+  double rssi = -std::numeric_limits<double>::max();
 
-  // Frequency deviation [kHz]; TODO: Define sign.
-  double frequency_deviation;
+  // Frequency deviation at last hop [kHz]; TODO: Define sign.
+  // A large negative value means: Not defined.
+  double frequency_deviation = -std::numeric_limits<double>::max();
 
-  // Bit errors (0e, 1e, field)
-  short errors;
+  // Bit errors at last hop (the 0e, 1e, field)
+  // -1: Not defined
+  short errors = -1;
 
   // Is this a relayed packet?
   bool is_relayed = false;
+  
+  /// APRS info
+  aprs_info aprs;
 };
 
 // Aircraft reception information:
@@ -286,6 +337,19 @@ struct aircraft_rx_info {
   // RX info
   rx_info rx;
 };
+
+/// @return Estimated memory consumption [bytes]
+long memory_consumption(const aprs_info&       );
+/// @return Estimated memory consumption [bytes]
+long memory_consumption(const vehicle_data&    );
+/// @return Estimated memory consumption [bytes]
+long memory_consumption(const versions&        );
+/// @return Estimated memory consumption [bytes]
+long memory_consumption(const rx_info&         );
+/// @return Estimated memory consumption [bytes]
+long memory_consumption(const aircraft_rx_info&);
+/// @return Estimated memory consumption [bytes]
+long memory_consumption(const station_info&    );
 
 // Parameters for thermal detection from tracked gliders
 struct thermal_detector_params {
@@ -485,6 +549,14 @@ inline vdb_by_name2 const& by_name2(vehicle_db const& vdb)
 { return vdb.get<tag_name2>(); }
 
 ////////////////////////////////////////////////////////////////////////
+// Statistics
+////////////////////////////////////////////////////////////////////////
+
+/// @return Table statistics (sizes) for the DB
+cpl::db::table_statistics
+get_table_statistics(const vehicle_db&);
+
+////////////////////////////////////////////////////////////////////////
 // API
 ////////////////////////////////////////////////////////////////////////
 
@@ -503,11 +575,14 @@ inline double default_ddb_query_interval() {
   return 600;
 }
 
-// Returns flarm:<id>, icao:<id> etc. depending on id_type
+/// @return flarm:<id>, icao:<id> etc. depending on id_type
 std::string qualified_id(std::string const& id, short id_type);
 
-// Returns <id> for flarm:<id>, etc.
-std::string unqualified_id(std::string const& id);
+/// @return <id> for flarm:<id>, etc.
+std::string unqualified_id(std::string const&);
+
+/// @return <id_type> for <id_type>:<id>
+std::string id_type(std::string const&);
 
 // Replaces the last n digits of <id> by <replacement>.  
 // E.g., returns e.g. flarm:DF0000 if passed flarm:DF48A3.
@@ -558,6 +633,9 @@ struct ddb_handler {
 // converting units as appropriate.
 // Returns true on success.
 //
+// When a 'new' (9/2018) aircraft line with :> is parsed, 
+// returns true but acft has an empty name.
+//
 // Example format:
 // ICA3D28CB>APRS,qAS,EDMC:/175426h4829.84N/01014.30E'353/122/A=002467 id053D28CB -078fpm +0.4rot 6.0dB 0e +2.3kHz gps2x2
 //
@@ -566,16 +644,19 @@ struct ddb_handler {
 // is attached to the (time-only) HHMMSS field from the APRS packet
 // to compute acft.second.pta.time.  If utc < 0, the date in
 // acft.second.pta.time will be January 1st, 1970.  
+//
+// If exceptions is true, throws on parse error instead of returning false.
 bool parse_aprs_aircraft(
     std::string const& line, 
     aircraft_rx_info_and_name& acft,
-    double const utc = -1);
+    double const utc = -1,
+    const bool exceptions = false);
 
   // Instantiate the parser, logging to log (only used during construction).
   // If query_interval > 0 [s], starts a background thread that queries
   // the OGN DDB at regular intervals and uses it to determine
   // callsigns, tracking flags etc.
-  // If initial_vdb is given and onempty, reads a vehicle DB from
+  // If initial_vdb is given and nonempty, reads a vehicle DB from
   // the given file/URL on startup.
   ddb_handler(std::ostream& log,
               double query_interval = default_ddb_query_interval(),
@@ -591,10 +672,10 @@ bool parse_aprs_aircraft(
   // i.e. set its callsign from the ID.
   void apply(aircraft_rx_info_and_name&) const;
 
-  // Writes ID, name1 or name2 into a JSON array on the given stream,
-  // which is a stringstream to avoid deadlocks.
-  // which == 1: name1, which == 2: name2, which == 3: ID, 
-  void write_names_json(std::ostringstream&, int which = 1) const;
+  /// Writes ID, name1 or name2 into a JSON array on the given stream.
+  /// which == 1: name1, which == 2: name2, which == 3: ID, 
+  /// @return Number of items written
+  long write_names_json(std::ostream&, int which = 1) const;
 
   // Returns the entry associated with the given qualified id.  If
   // not found, throws or returns a default-constructed vehicle_data.
@@ -625,9 +706,10 @@ using aprs_parser = ddb_handler;
   
 // Parses an APRS line containing receiver station info 
 // and stores data in stat.
-// Returns true on success, 
-// CAUTION: When a 'new' (9/2018) station line with :> is parsed, 
-// returns true but an empty station data structure.
+// Returns true on success, false on failure.
+//
+// When a 'new' (9/2018) station line with :> is parsed, 
+// returns true but the station has an empty name.
 //
 // Example format:
 // LFLO>APRS,TCPIP*,qAC,GLIDERN2:/175435h4603.32NI00359.99E&/A=001020 CPU:0.6 RAM:340.6/492.2MB NTP:0.6ms/-30.5ppm +67.0C RF:+46-1.2ppm/+0.3dB

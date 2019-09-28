@@ -33,14 +33,19 @@ public:
     void finish();
 
 private:
+    // OGN connection vars
+    std::unique_ptr<connection> c;
+    std::unique_ptr<std::istream> is;
+    std::unique_ptr<std::ostream> keepalive;
+
+    double const utc=-1;
+    double utc_parsed;
     cpl::ogn::aprs_parser *parser;
-    std::istream *is;
+
+
     DebugLog *debugLog;
     std::ofstream dataStream;
-    double const utc=-1;
-    std::ostream* keepalive;
-    cpl::ogn::aircraft_db acdb;
-    double utc_parsed;
+
     std::string filter;
     std::string dataDir;
 

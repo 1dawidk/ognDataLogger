@@ -13,20 +13,14 @@ OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter
 
 
 void OgnLogger::init() {
-    std::unique_ptr<connection> c;
-
-    double const ddb_query_interval = cpl::ogn::default_ddb_query_interval();
-
-    parser= new cpl::ogn::aprs_parser(std::clog, ddb_query_interval);
+    parser = new cpl::ogn::aprs_parser(std::clog, cpl::ogn::default_ddb_query_interval());
 
     c = cpl::ogn::connect(std::clog, DEFAULT_HOST, DEFAULT_SERVICE);
-    is= new instream(*c);
-    keepalive = new onstream(*c);
+    is.reset(new instream(*c));
+    keepalive.reset(new onstream(*c));
+    cpl::ogn::login(std::clog, *keepalive, *is, "ognDataLogger v2.0.0", filter);
 
-    cpl::ogn::login(
-            std::clog, *keepalive, *is, "ogn-test v1.20", filter); // eg: "r/52.213495/21.016965/100"
-
-    utc_parsed = 0;
+    utc_parsed= 0;
 
     pthread_mutex_lock(&dataMutex);
     dataStream.open(dataDir+"ognDataLogger.data");
@@ -42,13 +36,12 @@ void OgnLogger::exec() {
     }
 
     if ('#' == line[0]) {
-        //](*logStream) << "KEEPALIVE " << line.substr(2, std::string::npos) << std::endl;
-
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
         }
         return;
     }
+
     if (utc <= -2) {
         if (line.find("TIME ") == 0) {
             utc_parsed = cpl::util::parse_datetime(line.substr(5));
@@ -57,8 +50,8 @@ void OgnLogger::exec() {
     }
 
     cpl::ogn::aircraft_rx_info_and_name acft;
-    const double utc_now = utc > 0 ? utc :
-                           (utc <= -2 ? utc_parsed : cpl::util::utc());
+    const double utc_now = utc > 0 ? utc : (utc <= -2 ? utc_parsed : cpl::util::utc());
+
     if (parser->parse_aprs_aircraft(line, acft, utc_now)) {
 
         if(acft.first.find("ogn")!=std::string::npos && acft.second.mot.speed>4) {

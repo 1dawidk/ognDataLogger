@@ -48,13 +48,16 @@
 #include "cpp-lib/sys/util.h"
 
 #include "cpp-lib/assert.h"
+#include "cpp-lib/error.h"
 #include "cpp-lib/http.h"
 #include "cpp-lib/math-util.h"
+#include "cpp-lib/memory.h"
 #include "cpp-lib/registry.h"
 #include "cpp-lib/units.h"
 #include "cpp-lib/util.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 using namespace cpl::util::log;
 
@@ -252,7 +255,7 @@ std::unique_ptr<cpl::util::network::connection> cpl::ogn::connect(
   log << prio::NOTICE << "Local address: " << ret->local() << std::endl ;
   log << prio::NOTICE << "Peer address: "  << ret->peer () << std::endl ;
 
-  return std::move(ret);
+  return ret;
 }
 
 void cpl::ogn::login(
@@ -301,6 +304,35 @@ cpl::ogn::ddb_handler::~ddb_handler() {
         << std::endl;
     query_thread.join();
   }
+}
+
+cpl::db::table_statistics
+cpl::ogn::get_table_statistics(const cpl::ogn::vehicle_db& vdb) {
+  cpl::db::table_statistics ret;
+  ret.name = "(unnamed)";
+  ret.type = "OGN Device Database";
+
+  ret.size = vdb.size();
+  
+  // Iterate using ID index
+  for (const auto& el : by_id(vdb)) {
+    ret.bytes_precise += cpl::util::memory_consumption(el.id);
+
+    const auto& data = el.data;
+    ret.bytes_precise +=
+        cpl::util::memory_consumption(data.name1);
+    ret.bytes_precise +=
+        cpl::util::memory_consumption(data.name2);
+    ret.bytes_precise +=
+        cpl::util::memory_consumption(data.type);
+    ret.bytes_precise +=
+        cpl::util::memory_consumption(data.tracking);
+    ret.bytes_precise +=
+        cpl::util::memory_consumption(data.id_type_probably_wrong);
+  }
+
+  ret.bytes_estimate = ret.bytes_precise;
+  return ret;
 }
 
 void cpl::ogn::ddb_handler::set_vdb(
@@ -389,7 +421,7 @@ bool cpl::ogn::parse_aprs_station(
       ">%*[^,],TCPIP*,qAC,"
       "%40[^:]" // network? (seen: GLIDERN1, GLIDERN2)
       ":"
-      "%1[/>]"  // ":/": We have a lat/lon, ":>" Status info, no lat/lon
+      "%1[/>]"  // slash_or_greater ":/": We have a lat/lon, ":>" Status info, no lat/lon
       "%ld"     // HHMMSSh
       "h"       // zulu time
       "%lf"     // latitude
@@ -448,6 +480,7 @@ bool cpl::ogn::parse_aprs_station(
 
     return true;
 
+#if 0
     // DEAD_CODE
     // TODO: This should be parsed *without* lat/lon/alt when 
     // we have a :> message.
@@ -507,6 +540,8 @@ bool cpl::ogn::parse_aprs_station(
     }
 
     return true;
+#endif
+
   } else {
     // If we have ":>" and the first 4, we're happy but 
     // signal nothing parsed by setting name to ""
@@ -525,8 +560,33 @@ std::string cpl::ogn::qualified_id(std::string const& id, short id_type) {
     case cpl::ogn::ID_TYPE_FLARM : return "flarm:"   + id;
     case cpl::ogn::ID_TYPE_ICAO  : return "icao:"    + id;
     case cpl::ogn::ID_TYPE_OGN   : return "ogn:"     + id;
-    default:                       return "unknown:" + id;
+
+    case cpl::ogn::ID_TYPE_PILOT_AWARE: return "pilotaware:" + id;
+    case cpl::ogn::ID_TYPE_FLYMASTER  : return "flymaster:"  + id;
+    case cpl::ogn::ID_TYPE_FANET      : return "fanet:"      + id;
+    case cpl::ogn::ID_TYPE_NAVITER    : return "naviter:"    + id;
+    case cpl::ogn::ID_TYPE_SPOT       : return "spot:"       + id;
+
+    default: return "unknown:" + id;
   }
+}
+
+short cpl::ogn::id_type(
+    const std::string& station_id,
+    const cpl::ogn::aprs_info& aprs) {
+  if (boost::starts_with(station_id, "PAW")) {
+    return cpl::ogn::ID_TYPE_PILOT_AWARE;
+  }
+
+  if (boost::starts_with(station_id, "FMT")) {
+    return cpl::ogn::ID_TYPE_FLYMASTER;
+  }
+
+  if (boost::starts_with(station_id, "FNT")) {
+    return cpl::ogn::ID_TYPE_FANET;
+  }
+
+  return cpl::ogn::ID_TYPE_UNKNOWN;
 }
 
 std::string cpl::ogn::unqualified_id(std::string const& id) {
@@ -535,6 +595,15 @@ std::string cpl::ogn::unqualified_id(std::string const& id) {
     return id;
   } else {
     return id.substr(colon + 1, std::string::npos);
+  }
+}
+
+std::string cpl::ogn::id_type(std::string const& id) {
+  auto const colon = id.find(':');
+  if (std::string::npos == colon) {
+    return "unknown";
+  } else {
+    return id.substr(0, colon);
   }
 }
 
@@ -612,7 +681,9 @@ char const* cpl::ogn::thermal_format_comment() {
 std::ostream& cpl::ogn::operator<<(
     std::ostream& os, cpl::ogn::rx_info const& rx) {
   os <<        rx.received_by
+     << " " << rx.aprs.tocall
      << " " << rx.is_relayed
+     << " " << rx.aprs.relay
      << " " << rx.rssi
      << " " << rx.frequency_deviation
      << " " << rx.errors
@@ -622,8 +693,8 @@ std::ostream& cpl::ogn::operator<<(
 
 // Method: Search for qAS.  If it's 3 entries before that, we have a relay,
 // otherwise we don't
-bool cpl::ogn::parse_q_construct(
-    const std::string& s, cpl::ogn::q_construct& q) {
+bool cpl::ogn::parse_qas_construct(
+    const std::string& s, cpl::ogn::aprs_info& q) {
   
   cpl::util::splitter spl(s, ',');
 
@@ -657,11 +728,14 @@ bool cpl::ogn::parse_q_construct(
 bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
     const std::string& line, 
     cpl::ogn::aircraft_rx_info_and_name& acft,
-    double const utc) {
+    double const utc,
+    const bool exceptions) {
   unsigned id_and_type = 0;
   char id_v[8] = "";
 
   long hhmmss = 0;
+
+  char hhmmss_or_ddhhmm[2] = "";
 
   double climb_rate_fpm = 0, turn_rate_rot = 0;
   double alt_ft = 0;
@@ -675,12 +749,13 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
   // Cross-check with id below and set ID type accordingly.
   char station_id_v[41] = "";
   char q_construct_v[81] = "";
+  char slash_or_greater[2] = "";
   char lon_v[21] = "";
   char NS[2] = "";
   char EW[2] = "";
 
   // Normal, special conversions
-  int constexpr n_normal  = 9;
+  int constexpr n_normal  = 11;
   int constexpr n_special = 11;
   char special[n_special][31];
 
@@ -690,16 +765,25 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
   // q construct: TOCALL,[(relay)*],qAS,FROM
   // See struct q_construct in ogn.h
   const char* const format = 
-      "%40[^>]"
+      "%40[^>]"   // station_id_v
       ">"
-      "%80[^:]"
-      ":/%ldh"
-      "%lf"
-      "%1[NS]"  // north/south
-      "%*[/\\]" // separator, may be slash or backslash (!)
+      "%80[^:]"   // q_construct_v
+      ":"
+      "%1[/>]"    // slash_or_greater; ':/' or ':>'.  Only ':/' is supported.
+                  // The second results in an empty name.
+      "%ld"      // hhmmss
+      "%1[hz]"    // h or z / HHMMSS or DDHHMM
+                  // TODO: Support the 'z', although it should be rare
+                  // Pawel 5/2019 (skype): "After APRS specification, the "z" time 
+                  // is DDHHMMz where DD is day-of-the-month"
+                  // "It does happen sometimes... when the station looses internet 
+                  // conenction and then it comes back"
+      "%lf"       // latitude
+      "%1[NS]"    // north/south
+      "%*[/\\]"   // separator, may be slash or backslash (!)
       "%20[0-9.]"
-      "%1[EW]"  // east/west
-      "%*c"      // z, ', ... (movement indicator?)
+      "%1[EW]"    // east/west
+      "%*c"       // z, ', ... (movement indicator?)
       "%10[^A]"  // course/speed, either "CCC/SSS/" or just "/" if not moving
       "A=%lf "   // altitude [ft]
       "%30s "
@@ -719,7 +803,9 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
       line.c_str(), format, 
       station_id_v,
       q_construct_v,
+      slash_or_greater,
       &hhmmss,
+      hhmmss_or_ddhhmm,
       &acft.second.pta.lat,
       NS,
       lon_v,
@@ -738,21 +824,67 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
       special[9],
       special[10]);
 
-  q_construct q;
-  if (!parse_q_construct(q_construct_v, q)) {
-    return false;
+  if (conversions < 4) {
+    if (exceptions) {
+      cpl::util::throw_parse_error(
+          "Failed to parse basic info: "
+          "Number of successful conversions: " + std::to_string(conversions));
+    } else {
+      return false;
+    }
   }
 
-  // Want at least 6 'special' conversions.
-  // gpsNxM not there for OGN trackers
+  if (not parse_qas_construct(q_construct_v, acft.second.rx.aprs)) {
+    // Roll back
+    acft.second.rx.aprs = ::cpl::ogn::aprs_info();
+    if (exceptions) {
+      cpl::util::throw_parse_error(std::string("q construct: ") + q_construct_v);
+    } else {
+      return false;
+    }
+  }
+
+  // Ignore ':>' lines with status info.
+  if ('>' == slash_or_greater[0]) {
+    acft.first = "";
+    return true;
+  }
+
+  if (conversions < n_normal) {
+    if (exceptions) {
+      cpl::util::throw_parse_error(
+          "Failed to parse position: "
+          "Number of successful conversions: " + std::to_string(conversions));
+    } else {
+      return false;
+    }
+  }
+
+  // Ignore 'z' for time (DDHHMM), should be rare
+  if ('z' == hhmmss_or_ddhhmm[0]) {
+    acft.first = "";
+    return true;
+  }
+
+  assert('h' == hhmmss_or_ddhhmm[0]);
+
+  // TODO: This needs to be more flexible.  We should check each field
+  // for its content and assign accordingly.  For now we assume
+  // a certain order (implicit in the scanf() sequence below), and
+  // some elements may be missing.
   int const special_converted = conversions - n_normal;
 
-  // Relayed packets don't have kHz, dB and error count, so only
-  // 3 'specials'.  Others should have at least 6.
-  acft.second.rx.is_relayed = !q.relay.empty();
-  int const min_special_converted = acft.second.rx.is_relayed ? 4 : 6;
+  acft.second.rx.is_relayed = not acft.second.rx.aprs.relay.empty();
+  int const min_special_converted = 1;
   if (special_converted < min_special_converted) {
-    return false;
+    if (exceptions) {
+      util::throw_parse_error(
+            "Expected at least " + std::to_string(min_special_converted)
+          + " parameter(s) after basic info, found "
+          + std::to_string(special_converted));
+    } else {
+      return false;
+    }
   }
   {
     // "sub-parser" for cse/speed
@@ -766,59 +898,84 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
       // TODO: Is this really in knots?
       acft.second.mot.speed  = speed_kt * cpl::units::knot();
     } else {
-      return false;
+      if (exceptions) {
+        util::throw_parse_error(std::string("Course/speed: ") + cse_spd);
+      } else {
+        return false;
+      }
     }
   }
 
-  acft.second.rx.received_by = q.from;
+  acft.second.rx.received_by = acft.second.rx.aprs.from;
   acft.second.data.name1 = "-";
   acft.second.pta.time = adapt_utc(hhmmss_to_seconds(hhmmss), utc);
 
   if (!my_double_cast(lon_v, acft.second.pta.lon)) {
-    return false;
+    if (exceptions) {
+      util::throw_parse_error(std::string("Longitude: ") + lon_v);
+    } else {
+      return false;
+    }
   }
 
   set_latlon(NS, EW, acft.second.pta.lat, acft.second.pta.lon);
   acft.second.pta.alt = alt_ft * cpl::units::foot();
 
   if (acft.second.pta.alt > MAX_PLAUSIBLE_ALTITUDE) {
-    return false;
+    if (exceptions) {
+      util::throw_parse_error("Implausible altitude: " 
+            + std::to_string(acft.second.pta.alt));
+    } else {
+      return false;
+    }
   }
 
   int shift = 0;
 
   if ('!' == special[0][0]) {
-    if (!set_latlon_dao(special[0], acft.second.pta.lat, acft.second.pta.lon)) {
-      return false;
+    if (not set_latlon_dao(special[0], acft.second.pta.lat, acft.second.pta.lon)) {
+      if (exceptions) {
+        util::throw_parse_error(std::string("DAO construct: ") + special[0]);
+      } else {
+        return false;
+      }
     }
+    ++shift;
+  }
+
+  bool         id_parsed = false;
+  bool climb_rate_parsed = false;
+  bool  turn_rate_parsed = false;
+
+  if (shift >= special_converted) { goto postprocess; }
+  assert(shift < special_converted);
+  if (2 == std::sscanf(special[shift], "id%2x%7s", &id_and_type, id_v)) {
+    id_parsed = true;
+    ++shift;
+    if (6 != std::strlen(id_v)) {
+      if (exceptions) {
+        util::throw_parse_error(
+            std::string("ID: Expected 6 characters: ") + id_v);
+      } else {
+        return false;
+      }
+    }
+  }
+
+  if (shift >= special_converted) { goto postprocess; }
+  assert(shift < special_converted);
+  if (1 == std::sscanf(special[shift], "%lffpm", &climb_rate_fpm)) {
+    climb_rate_parsed = true;
     ++shift;
   }
 
   if (shift >= special_converted) { goto postprocess; }
   assert(shift < special_converted);
-  if (2 != std::sscanf(special[shift], "id%2x%7s", &id_and_type, id_v)) {
-    return false;
+  if (1 == std::sscanf(special[shift], "%lfrot", &turn_rate_rot)) {
+    turn_rate_parsed = true;
+    ++shift;
   }
-  if (6 != std::strlen(id_v)) {
-    return false;
-  }
-  ++shift;
 
-  if (shift >= special_converted) { goto postprocess; }
-  assert(shift < special_converted);
-  if (1 != std::sscanf(special[shift], "%lffpm", &climb_rate_fpm)) {
-    return false;
-  }
-  ++shift;
-
-  if (shift >= special_converted) { goto postprocess; }
-  assert(shift < special_converted);
-  if (1 != std::sscanf(special[shift], "%lfrot", &turn_rate_rot)) {
-    return false;
-  }
-  ++shift;
-
-  // Value may be missing on FLARMs
   if (shift >= special_converted) { goto postprocess; }
   assert(shift < special_converted);
   if (1 == std::sscanf(special[shift], "FL%lf", &baro_alt_fl)) {
@@ -826,33 +983,25 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
     acft.second.baro_alt = baro_alt_fl * cpl::units::flight_level();
   }
 
+  // Value may be missing.
   if (shift >= special_converted) { goto postprocess; }
   assert(shift < special_converted);
-  if (1 != std::sscanf(special[shift], "%lfdB", &acft.second.rx.rssi)) {
-    return false;
-  } else {
+  if (1 == std::sscanf(special[shift], "%lfdB", &acft.second.rx.rssi)) {
     ++shift;
-    if (acft.second.rx.is_relayed) { return false; }
   }
 
-  // 0e, 1e, 2e etc. (errors)
+  // 0e, 1e, 2e etc. (errors).  May be missing.
   if (shift >= special_converted) { goto postprocess; }
   assert(shift < special_converted);
-  if (1 != std::sscanf(special[shift], "%hde", &acft.second.rx.errors)) {
-    return false;
-  } else {
+  if (1 == std::sscanf(special[shift], "%hde", &acft.second.rx.errors)) {
     ++shift;
-    if (acft.second.rx.is_relayed) { return false; }
   }
 
   if (shift >= special_converted) { goto postprocess; }
   assert(shift < special_converted);
-  if (1 != std::sscanf(special[shift], "%lfkHz", 
+  if (1 == std::sscanf(special[shift], "%lfkHz", 
                        &acft.second.rx.frequency_deviation)) {
-    return false;
-  } else {
     ++shift;
-    if (acft.second.rx.is_relayed) { return false; }
   }
 
   if (shift >= special_converted) { goto postprocess; }
@@ -883,28 +1032,68 @@ bool cpl::ogn::aprs_parser::parse_aprs_aircraft(
 
   // Post processing of values (units etc.)
 postprocess:
-  // STttttaa
-  // stealth mode S, no-tracking flag T, aircraft type tttt, address type aa
-  acft.second.id_type      =   id_and_type       & 0x3  ;
-  acft.second.vehicle_type =  (id_and_type >> 2) & 0xf  ;
-  acft.second.stealth =   id_and_type       & 0x80 ;
-  acft.second.process = !(id_and_type       & 0x40);
-  // acft.second.data.track and acft.second.data.identify set in
-  // by caller.
 
-  // Primary key ID: 'first' element of the pair.
-  acft.first = qualified_id(id_v, acft.second.id_type);
+  if (id_parsed) {
+    // STttttaa
+    // stealth mode S, no-tracking flag T, aircraft type tttt, address type aa
+    acft.second.id_type      =   id_and_type       & 0x3  ;
+    acft.second.vehicle_type =  (id_and_type >> 2) & 0xf  ;
+    acft.second.stealth =   id_and_type       & 0x80 ;
+    acft.second.process = !(id_and_type       & 0x40);
+    // acft.second.data.track and acft.second.data.identify set in
+    // by caller.
 
-  acft.second.mot.vertical_speed =
-    climb_rate_fpm * cpl::units::foot() / cpl::units::minute();
+    // NAVITER messes with the data.  Until we know what's going on,
+    // be careful and override ID type.
+    if        ("NAVITER" == acft.second.rx.aprs.from) {
+      acft.second.id_type = cpl::ogn::ID_TYPE_NAVITER;
+    } else if ("SPOT" == acft.second.rx.aprs.from) {
+      acft.second.id_type = cpl::ogn::ID_TYPE_SPOT;
+    }
 
-  // http://wiki.glidernet.org/wiki:subscribe-to-ogn-data
-  // OGN doc is unclear here:
-  // "1rot is the standard aircraft rotation rate of 1 half-turn per two
-  // minutes.".  We assume 1rot indicates a standard procedure turn rate
-  // which is 3 degrees/second.
-  // Pawel June 22, 2015: Standard turn 180deg/min == 3deg/sec.
-  acft.second.mot.turnrate = 3 * turn_rate_rot;
+    // Similar with FANET, but here we look at the TOCALL.  FANET
+    // itself would claim FLARM...
+    if ("OGNFNT" == acft.second.rx.aprs.tocall) {
+      acft.second.id_type = cpl::ogn::ID_TYPE_FANET;
+    }
+
+    // Primary key ID: 'first' element of the pair.
+    acft.first = qualified_id(id_v, acft.second.id_type);
+  } else {
+    const std::string station_id = station_id_v;
+
+    acft.second.id_type = cpl::ogn::id_type(station_id, acft.second.rx.aprs);
+    acft.first = qualified_id(
+        station_id.substr(3, std::string::npos), acft.second.id_type);
+
+    if (cpl::ogn::ID_TYPE_FLYMASTER == acft.second.id_type) {
+      acft.second.vehicle_type = cpl::ogn::VEHICLE_TYPE_PARAGLIDER;
+    } else {
+      acft.second.vehicle_type = cpl::ogn::VEHICLE_TYPE_UNKNOWN;
+    }
+
+    acft.second.stealth = false;
+    acft.second.process = true;
+  }
+
+  if (climb_rate_parsed) {
+    acft.second.mot.vertical_speed =
+      climb_rate_fpm * cpl::units::foot() / cpl::units::minute();
+  } else {
+    acft.second.mot.vertical_speed = 0;
+  }
+
+  if (turn_rate_parsed) {
+    // http://wiki.glidernet.org/wiki:subscribe-to-ogn-data
+    // OGN doc is unclear here:
+    // "1rot is the standard aircraft rotation rate of 1 half-turn per two
+    // minutes.".  We assume 1rot indicates a standard procedure turn rate
+    // which is 3 degrees/second.
+    // Pawel June 22, 2015: Standard turn 180deg/min == 3deg/sec.
+    acft.second.mot.turnrate = 3 * turn_rate_rot;
+  } else {
+    acft.second.mot.turnrate = 0;
+  }
 
   apply(acft);
 
@@ -924,8 +1113,8 @@ void cpl::ogn::ddb_handler::apply(
 
 }
 
-void cpl::ogn::ddb_handler::write_names_json(
-    std::ostringstream& oss,
+long cpl::ogn::ddb_handler::write_names_json(
+    std::ostream& oss,
     const int which) const {
   oss << "[\n";
   cpl::util::verify_bounds(which, "which parameter", 1, 3);
@@ -935,9 +1124,11 @@ void cpl::ogn::ddb_handler::write_names_json(
 
   std::lock_guard<std::mutex> lock(vdb_mutex);
 
+  long ret = 0;
   for (auto it  = by_id(vdb).begin(); 
             it != by_id(vdb).end  (); /* no increment */) {
     oss << '"' << extract(*it) << '"';
+    ++ret;
     ++it;
     if (by_id(vdb).end() == it) {
       break;
@@ -945,6 +1136,7 @@ void cpl::ogn::ddb_handler::write_names_json(
     oss << ",\n";
   }
   oss << ']';
+  return ret;
 }
 
 cpl::ogn::vehicle_data cpl::ogn::ddb_handler::lookup(
@@ -1306,6 +1498,69 @@ void cpl::ogn::update(cpl::ogn::thermal_detector_params const& params,
   }
 }
 
+long cpl::ogn::memory_consumption(const cpl::ogn::aprs_info& a) {
+  return   cpl::util::memory_consumption(a.tocall)
+         + cpl::util::memory_consumption(a.relay )
+         + cpl::util::memory_consumption(a.from  )
+         ;
+}
+
+long cpl::ogn::memory_consumption(const cpl::ogn::vehicle_data& d) {
+  return   cpl::util::memory_consumption(d.name1)
+         + cpl::util::memory_consumption(d.name2)
+         + cpl::util::memory_consumption(d.type )
+ 
+         + cpl::util::memory_consumption(d.tracking)
+         + cpl::util::memory_consumption(d.identify)
+         + cpl::util::memory_consumption(d.id_type_probably_wrong)
+         ;
+}
+
+long cpl::ogn::memory_consumption(const versions& v) {
+  return   cpl::util::memory_consumption(v.hardware)
+         + cpl::util::memory_consumption(v.software)
+         ;
+}
+
+long cpl::ogn::memory_consumption(const rx_info& r) {
+  return   cpl::util::memory_consumption(r.received_by)
+         + cpl::util::memory_consumption(r.rssi)
+         + cpl::util::memory_consumption(r.frequency_deviation)
+         + cpl::util::memory_consumption(r.errors)
+         + cpl::util::memory_consumption(r.is_relayed)
+         +            memory_consumption(r.aprs)
+         ;
+}
+
+long cpl::ogn::memory_consumption(const aircraft_rx_info& a) {
+  return   cpl::util::memory_consumption(a.id_type)
+         + cpl::util::memory_consumption(a.vehicle_type)
+         + cpl::util::memory_consumption(a.process)
+         + cpl::util::memory_consumption(a.stealth)
+         +            memory_consumption(a.ver)
+         +            memory_consumption(a.data)
+         + cpl::util::memory_consumption(a.pta)
+         + cpl::util::memory_consumption(a.mot)
+         + cpl::util::memory_consumption(a.baro_alt)
+         +            memory_consumption(a.rx)
+         ;
+}
+
+long cpl::ogn::memory_consumption(const station_info& si) {
+  return   cpl::util::memory_consumption(si.network)
+         + cpl::util::memory_consumption(si.pt)
+
+         + cpl::util::memory_consumption(si.cpu)
+         + cpl::util::memory_consumption(si.ram_used)
+         + cpl::util::memory_consumption(si.ram_max)
+         + cpl::util::memory_consumption(si.ntp_difference)
+         + cpl::util::memory_consumption(si.ntp_ppm)
+
+         + cpl::util::memory_consumption(si.temperature)
+         + cpl::util::memory_consumption(si.version)
+         ;
+}
+
 namespace {
 
 void test_q(
@@ -1315,8 +1570,8 @@ void test_q(
     const std::string& relay,
     const std::string& from) {
   os << "Testing q construct: " << s << std::endl;
-  cpl::ogn::q_construct q;
-  always_assert(parse_q_construct(s, q));
+  cpl::ogn::aprs_info q;
+  always_assert(parse_qas_construct(s, q));
   always_assert(q.tocall == tocall);
   always_assert(q.relay  == relay );
   always_assert(q.from   == from  );
@@ -1350,4 +1605,15 @@ void cpl::ogn::unittests(std::ostream& os) {
 
   test_q(os, "OGFLARM-1,qAS,LFLE", "OGFLARM-1", "", "LFLE");
   test_q(os, "APRS,RELAY*,qAS,EPLR", "APRS", "RELAY*", "EPLR");
+
+  always_assert("foo"     == cpl::ogn::id_type("foo:DEAB23"));
+  always_assert("unknown" == cpl::ogn::id_type("DEAB23"));
+  always_assert("DEAB23"  == cpl::ogn::unqualified_id("foo:DEAB23"));
+
+  os << "Memory consumption of empty vehicle_data: "
+     << cpl::ogn::memory_consumption(cpl::ogn::vehicle_data())
+     << std::endl;
+  os << "Memory consumption of aircraft_rx_info: "
+     << cpl::ogn::memory_consumption(cpl::ogn::aircraft_rx_info())
+     << std::endl;
 }

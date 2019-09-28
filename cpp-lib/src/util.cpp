@@ -33,8 +33,11 @@
 #include <cstring>
 #include <ctime>
 
+#include "cpp-lib/error.h"
 #include "cpp-lib/exception.h"
-#include "cpp-lib/platform/wrappers.h"
+
+#include "cpp-lib/detail/platform_wrappers.h"
+#include "cpp-lib/sys/syslogger.h"
 
 
 using namespace cpl::util ;
@@ -126,17 +129,65 @@ std::vector<std::string> cpl::util::split(
   return ret;
 }
 
+std::pair<std::string, std::string> cpl::util::split_pair(
+    std::string const& s,
+    const char* const separators) {
+  std::vector<std::string> v;
+  cpl::util::split(v, s, separators);
+  cpl::util::verify(2 == v.size(),
+      "split_pair(): Expected 2 fields, got " + std::to_string(v.size()));
+  return std::make_pair(v[0], v[1]);
+}
 
+std::pair<std::string, std::string> cpl::util::split_colon_blank(
+    std::string const& s) {
+  std::pair<std::string, std::string> ret;
+
+  const auto colon = s.find(':');
+  assert(s.end() != s.begin() + colon);
+
+  if (std::string::npos == colon) {
+    util::throw_error("split_colon_blank(): No colon found: " + s);
+  }
+
+  ret.first = s.substr(0, colon);
+
+  const auto second_start =
+      std::find_if(s.begin() + colon + 1, s.end(),
+          [] (const char c) { return not (' ' == c or '\t' == c); });
+
+  ret.second = std::string(second_start, s.end());
+
+  return ret;
+}
+
+death::death()
+: os( nullptr )
+{}
 
 void cpl::util::death::die(
-  std::string const& msg ,
+  std::string msg ,
   std::string name ,
   int const exit_code
 ) {
 
-  if( os && *os        << msg << std::endl ) { goto suicide ; }
-  if(       std::cerr  << msg << std::endl ) { goto suicide ; }
-  if(       std::clog  << msg << std::endl ) { goto suicide ; }
+  using namespace cpl::util::log;
+
+  if( nullptr != os ) {
+    *os << prio::EMERG << msg << std::endl ;
+  } else {
+    try {
+      syslogger sl ;
+      sl << prio::EMERG << msg << std::endl ;
+    } catch ( std::exception const& e ) {
+      msg += "(Writing to syslog failed: " ;
+      msg += e.what()                      ;
+      msg += ")"                           ;
+    }
+  }
+
+  std::cerr << prio::EMERG << msg << std::endl;
+  std::clog << prio::EMERG << msg << std::endl;
 
   if( name == "" )
   { name = die_output_name() ; }
@@ -144,12 +195,10 @@ void cpl::util::death::die(
   {
     // If the following fails, we're really f**cked up :-)
     std::ofstream last_chance( name.c_str() ) ;
-    last_chance << msg << std::endl ;
+    last_chance << prio::EMERG << msg << std::endl ;
   }
 
-suicide:
   this->exit( exit_code ) ;
-
 }
 
 void cpl::util::die(

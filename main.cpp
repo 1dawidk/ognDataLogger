@@ -55,12 +55,12 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-//#ifdef BACKGROUND_MODE
-    // Close out the standard file descriptors
-    //close(STDIN_FILENO);
-    //close(STDOUT_FILENO);
-    //close(STDERR_FILENO);
-//#endif
+#ifdef BACKGROUND_MODE
+    //Close out the standard file descriptors
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+#endif
 
     OgnLogger ognLogger(&debugLog, argv[2], argv[1]);
     LogPusher logPusher(&debugLog, &ognLogger, argv[3]);

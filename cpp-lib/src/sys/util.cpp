@@ -19,7 +19,7 @@
 
 #include "cpp-lib/sys/util.h"
 
-#include "cpp-lib/platform/wrappers.h"
+#include "cpp-lib/detail/platform_wrappers.h"
 
 
 using namespace cpl::util ;

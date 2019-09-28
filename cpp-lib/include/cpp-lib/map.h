@@ -29,8 +29,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <png++/png.hpp>
-
+#include "png++/png.hpp"
 
 #include "cpp-lib/gnss.h"
 #include "cpp-lib/registry.h"

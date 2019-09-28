@@ -17,7 +17,7 @@
 find_library(ogn_lib_LIB
         NAMES cpp-lib
         PATHS "${CMAKE_CURRENT_SOURCE_DIR}/cpp-lib/"
-        PATH_SUFFIXES obj/opt)
+        PATH_SUFFIXES build)
 
 find_path(ogn_lib_INC
         NAMES cpp-lib/

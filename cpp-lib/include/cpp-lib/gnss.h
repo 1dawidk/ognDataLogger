@@ -44,7 +44,7 @@ struct satinfo {
   // Number of satellites used to compute the fix, -1 for an invalid fix
   int n_satellites;
 
-  // Horizontal accuracy [m].  The smaller, the better.
+  // Horizontal accuracy [m], always >= 0.  The smaller, the better.
   double horizontal_accuracy;
 };
 
@@ -356,6 +356,14 @@ inline double msl_from_wgs84(lat_lon_alt const& lla) {
 // Converts Mean Sea Level (MSL) altitude [m] to WGS84.
 inline double wgs84_from_msl(lat_lon_alt const& lla) {
   return lla.alt + geoid_height(lla);
+}
+
+inline long memory_consumption(const lat_lon_alt& lla) {
+  return sizeof(lla);
+}
+
+inline long memory_consumption(const position_time& pt) {
+  return sizeof(pt);
 }
 
 } // namespace gnss

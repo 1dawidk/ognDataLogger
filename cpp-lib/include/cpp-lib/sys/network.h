@@ -50,9 +50,7 @@
 
 #include "cpp-lib/util.h"
 
-
 #include "cpp-lib/detail/socket_lowlevel.h"
-#include "cpp-lib/platform/wrappers.h"
 
 namespace cpl {
 
@@ -263,7 +261,8 @@ bool operator!=( address< type > const& a1 , address< type > const& a2 ) {
     return    a1.as_sockaddr_in6().sin6_port
            != a2.as_sockaddr_in6().sin6_port
         ||    !cpl::util::mem_equal(a1.as_sockaddr_in6().sin6_addr,
-                                    a2.as_sockaddr_in6().sin6_addr);
+                                    a2.as_sockaddr_in6().sin6_addr)
+    ;
   }
 }
 

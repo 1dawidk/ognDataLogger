@@ -32,7 +32,7 @@
 
 #include "cpp-lib/assert.h"
 
-#include <eigen3/Eigen/Dense>
+#include "Eigen/Dense"
 
 namespace cpl {
 
