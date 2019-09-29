@@ -14,4 +14,4 @@ mkdir build
 cd build
 echo "Configuring for $build_type ..."
 cmake -D CMAKE_CXX_COMPILER=g++ -D CMAKE_BUILD_TYPE=$build_type ..
-make -j6
+make -j2
