@@ -17,11 +17,8 @@ void LogPusher::onRun() {
     uint8_t now= (uint8_t)Clock::getHour();
 
     if( lastHour!=now ) {
-
-        debugLog->write("LogPusher", "Check data file [ ... ]");
         vector<string> fileLines;
         ognLogger->readDataFile(fileLines);
-        debugLog->write("LogPusher", "Check data file [ DONE ]");
 
         if( fileLines.size() ) {
 

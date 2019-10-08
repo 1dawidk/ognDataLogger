@@ -38,6 +38,9 @@ void OgnLogger::exec() {
     if ('#' == line[0]) {
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
+            debugLog->write("OgnLogger", string("Keepalive [ OK ]: "+line).c_str());
+        } else {
+            debugLog->write("OgnLogger", string("Keepalive [ ERROR ]: "+line).c_str());
         }
         return;
     }
@@ -45,6 +48,10 @@ void OgnLogger::exec() {
     if (utc <= -2) {
         if (line.find("TIME ") == 0) {
             utc_parsed = cpl::util::parse_datetime(line.substr(5));
+            debugLog->write("OgnLogger", string("UTC Update [ OK ]: "+line).c_str());
+            return;
+        } else {
+            debugLog->write("OgnLogger", string("UTC Update [ ERROR ]: "+line).c_str());
             return;
         }
     }
