@@ -11,6 +11,7 @@ LogPusher::LogPusher(DebugLog *debugLog, OgnLogger *ognLogger, const char* serve
 void LogPusher::onStart() {
     lastHour= 120;
     debugLog->write("LogPusher", "Start [ DONE ]");
+    linesToday=0;
 }
 
 void LogPusher::onRun() {
@@ -57,9 +58,19 @@ void LogPusher::onRun() {
             curl_easy_perform(curlHandle);
             curl_easy_cleanup(curlHandle);
 
-            debugLog->write("LogPusher", "Sent to server");
+            if(now) {
+                linesToday+= fileLines.size();
+            } else {
+                linesToday= fileLines.size();
+            }
+
+            char msg[256];
+            sprintf(msg, "Sent to server [ %d lines today ]", linesToday);
+            debugLog->write("LogPusher", msg);
         } else {
-            debugLog->write("LogPusher", "Nothing to log");
+            char msg[256];
+            sprintf(msg, "Nothing to log [ %d lines today ]", linesToday);
+            debugLog->write("LogPusher", msg);
         }
 
         lastHour= now;

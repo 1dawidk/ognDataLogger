@@ -27,6 +27,7 @@ private:
     const char* serverAdr;
     OgnLogger *ognLogger;
     uint8_t lastHour;
+    int linesToday;
 };
 
 

@@ -40,6 +40,7 @@ private:
 
     double const utc=-1;
     double utc_parsed;
+    int lastKALog;
     cpl::ogn::aprs_parser *parser;
 
 
