@@ -16,7 +16,7 @@ void Watchdog::onStart() {
 void Watchdog::onRun() {
     if(ognInstance->getLastKeepaliveTime()+2<Clock::GetDayMinutes()){
         debugLog->write("Watchdog", "OGN connection is DEAD. Trying to reconnect");
-        ognInstance->resetConnection();
+        //ognInstance->resetConnection();
     }
     Thread::pause(1000);
 }
