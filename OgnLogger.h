@@ -28,6 +28,8 @@ public:
     std::string getDataDir();
     void readDataFile(std::vector<std::string> &fileLines);
     void resetDataFileStream();
+    int getLastKeepaliveTime();
+    void resetConnection();
     void init();
     void exec();
     void finish();

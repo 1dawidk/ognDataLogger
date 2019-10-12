@@ -3,6 +3,7 @@
 #include "OgnLogger.h"
 #include "LogPusher.h"
 #include "DebugLog.h"
+#include "Watchdog.h"
 
 
 using namespace cpl::util::network ;
@@ -64,9 +65,12 @@ int main(int argc, char* argv[]) {
 
     OgnLogger ognLogger(&debugLog, argv[2], argv[1]);
     LogPusher logPusher(&debugLog, &ognLogger, argv[3]);
+    Watchdog  watchdog(&debugLog, &ognLogger);
 
     ognLogger.init();
     logPusher.start();
+    watchdog.start();
+
 
     while( 1 ){
         ognLogger.exec();

@@ -21,7 +21,6 @@ void OgnLogger::init() {
     cpl::ogn::login(std::clog, *keepalive, *is, "ognDataLogger v2.0.0", filter);
     lastKALog= Clock::GetDayMinutes();
 
-
     utc_parsed= 0;
 
     pthread_mutex_lock(&dataMutex);
@@ -120,4 +119,15 @@ void OgnLogger::resetDataFileStream() {
     }
 
     dataStream.open(dataDir+"ognDataLogger.data");
+}
+
+int OgnLogger::getLastKeepaliveTime() {
+    return lastKALog;
+}
+
+void OgnLogger::resetConnection() {
+    pthread_mutex_lock(&dataMutex);
+    this->init();
+    pthread_mutex_unlock(&dataMutex);
+
 }
