@@ -40,10 +40,7 @@ void OgnLogger::exec() {
     if ('#' == line[0]) {
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
-            if(lastKALog+60<Clock::GetDayMinutes()) {
-                debugLog->write("OgnLogger", string("Keepalive [ OK ]: " + line).c_str());
-                lastKALog= Clock::GetDayMinutes();
-            }
+            debugLog->write("OgnLogger", "Keepalive [ OK ]");
         } else {
             debugLog->write("OgnLogger", string("Keepalive [ ERROR ]: "+line).c_str());
         }
