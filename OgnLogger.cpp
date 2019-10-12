@@ -24,7 +24,7 @@ void OgnLogger::init() {
     utc_parsed= 0;
 
     pthread_mutex_lock(&dataMutex);
-    dataStream.open(dataDir+"ognDataLogger.data");
+    dataStream.open(dataDir+"ognDataLogger.data", std::ofstream::app);
     pthread_mutex_unlock(&dataMutex);
 }
 
@@ -40,6 +40,7 @@ void OgnLogger::exec() {
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
             debugLog->write("OgnLogger", "Keepalive [ OK ]");
+            lastKALog= Clock::GetDayMinutes();
         } else {
             debugLog->write("OgnLogger", string("Keepalive [ ERROR ]: "+line).c_str());
         }

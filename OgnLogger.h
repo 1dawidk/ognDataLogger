@@ -42,9 +42,8 @@ private:
 
     double const utc=-1;
     double utc_parsed;
-    int lastKALog;
+    volatile int lastKALog;
     cpl::ogn::aprs_parser *parser;
-
 
     DebugLog *debugLog;
     std::ofstream dataStream;
