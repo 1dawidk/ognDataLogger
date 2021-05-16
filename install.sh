@@ -7,7 +7,7 @@ echo "Install required dependencies"
 apt-get update
 apt install libeigen3-dev libpng++-dev libboost-all-dev libpng-dev git cmake
 
-#Build misc library
+#Build ogn library
 echo "Build ogn library..."
 
 cd ./cpp-lib/
