@@ -1,20 +1,20 @@
 #include <iostream>
-#include "LogPusher.h"
+#include "DBFeeder.h"
 
-LogPusher::LogPusher(DebugLog *debugLog, OgnLogger *ognLogger, const char* server) {
+DBFeeder::DBFeeder(Logger *debugLog, OgnDataPicker *ognLogger, const char* server) {
     this->ognLogger= ognLogger;
     this->dataDir= ognLogger->getDataDir();
     this->serverAdr= server;
     this->debugLog= debugLog;
 }
 
-void LogPusher::onStart() {
+void DBFeeder::onStart() {
     lastHour= 120;
-    debugLog->write("LogPusher", "Start [ DONE ]");
+    debugLog->write("DBFeeder", "Start [ DONE ]");
     linesToday=0;
 }
 
-void LogPusher::onRun() {
+void DBFeeder::onRun() {
     uint8_t now= (uint8_t)Clock::getHour();
 
     if( lastHour!=now ) {
@@ -66,11 +66,11 @@ void LogPusher::onRun() {
 
             char msg[256];
             sprintf(msg, "Sent to server [ %d lines today ]", linesToday);
-            debugLog->write("LogPusher", msg);
+            debugLog->write("DBFeeder", msg);
         } else {
             char msg[256];
             sprintf(msg, "Nothing to log [ %d lines today ]", linesToday);
-            debugLog->write("LogPusher", msg);
+            debugLog->write("DBFeeder", msg);
         }
 
         lastHour= now;
@@ -80,6 +80,6 @@ void LogPusher::onRun() {
     Thread::pause(120000);
 }
 
-void LogPusher::onStop() {
-    debugLog->write("LogPusher", "Stop [ DONE ]");
+void DBFeeder::onStop() {
+    debugLog->write("DBFeeder", "Stop [ DONE ]");
 }

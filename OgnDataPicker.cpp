@@ -1,24 +1,23 @@
-#include "OgnLogger.h"
+#include "OgnDataPicker.h"
 
-OgnLogger::OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter) {
-    this->debugLog= debugLog;
+OgnDataPicker::OgnDataPicker(Logger *log, const char *dataDir, const char *filter) {
+    this->log= log;
     this->filter= filter;
     this->dataDir= dataDir;
 
-
-    debugLog->write("OgnLogger", "Start logging...");
+    log->write("OgnDataPicker", "Start logging...");
     dataMutex= PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&dataMutex);
 }
 
 
-void OgnLogger::init() {
+void OgnDataPicker::init() {
     parser = new cpl::ogn::aprs_parser(std::clog, cpl::ogn::default_ddb_query_interval());
 
     c = cpl::ogn::connect(std::clog, DEFAULT_HOST, DEFAULT_SERVICE);
     is.reset(new instream(*c));
     keepalive.reset(new onstream(*c));
-    cpl::ogn::login(std::clog, *keepalive, *is, "ognDataLogger v2.0.0", filter);
+    cpl::ogn::login(std::cout, *keepalive, *is, "ognDataLogger v2.0.0", filter);
     lastKALog= Clock::GetDayMinutes();
 
     utc_parsed= 0;
@@ -28,7 +27,7 @@ void OgnLogger::init() {
     pthread_mutex_unlock(&dataMutex);
 }
 
-void OgnLogger::exec() {
+void OgnDataPicker::exec() {
     std::string line;
     std::getline(*is, line);
 
@@ -39,10 +38,10 @@ void OgnLogger::exec() {
     if ('#' == line[0]) {
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
-            debugLog->write("OgnLogger", "Keepalive [ OK ]");
+            log->write("OgnDataPicker", "Keepalive [ OK ]");
             lastKALog= Clock::GetDayMinutes();
         } else {
-            debugLog->write("OgnLogger", string("Keepalive [ ERROR ]: "+line).c_str());
+            log->write("OgnDataPicker", string("Keepalive [ ERROR ]: " + line).c_str());
         }
         return;
     }
@@ -50,10 +49,10 @@ void OgnLogger::exec() {
     if (utc <= -2) {
         if (line.find("TIME ") == 0) {
             utc_parsed = cpl::util::parse_datetime(line.substr(5));
-            debugLog->write("OgnLogger", string("UTC Update [ OK ]: "+line).c_str());
+            log->write("OgnDataPicker", string("UTC Update [ OK ]: " + line).c_str());
             return;
         } else {
-            debugLog->write("OgnLogger", string("UTC Update [ ERROR ]: "+line).c_str());
+            log->write("OgnDataPicker", string("UTC Update [ ERROR ]: " + line).c_str());
             return;
         }
     }
@@ -78,25 +77,25 @@ void OgnLogger::exec() {
         if (cpl::ogn::parse_aprs_station(line, stat, utc_now)) {
 
         } else {
-            debugLog->write("OgnLogger", string("# WARNING: Couldn't parse: " + line).c_str());
+            log->write("OgnDataPicker", string("# WARNING: Couldn't parse: " + line).c_str());
         }
     }
 }
 
-void OgnLogger::finish() {
+void OgnDataPicker::finish() {
     pthread_mutex_lock(&dataMutex);
     dataStream.close();
     pthread_mutex_unlock(&dataMutex);
 
-    debugLog->write("OgnLogger", "Finish [ DONE ]");
+    log->write("OgnDataPicker", "Finish [ DONE ]");
 }
 
 
-std::string OgnLogger::getDataDir() {
+std::string OgnDataPicker::getDataDir() {
     return dataDir;
 }
 
-void OgnLogger::readDataFile(std::vector<std::string> &fileLines) {
+void OgnDataPicker::readDataFile(std::vector<std::string> &fileLines) {
     pthread_mutex_lock(&dataMutex);
 
     std::string line;
@@ -114,7 +113,7 @@ void OgnLogger::readDataFile(std::vector<std::string> &fileLines) {
     pthread_mutex_unlock(&dataMutex);
 }
 
-void OgnLogger::resetDataFileStream() {
+void OgnDataPicker::resetDataFileStream() {
     if(dataStream.is_open()){
         dataStream.close();
     }
@@ -122,11 +121,11 @@ void OgnLogger::resetDataFileStream() {
     dataStream.open(dataDir+"ognDataLogger.data");
 }
 
-int OgnLogger::getLastKeepaliveTime() {
+int OgnDataPicker::getLastKeepaliveTime() {
     return lastKALog;
 }
 
-void OgnLogger::resetConnection() {
+void OgnDataPicker::resetConnection() {
     pthread_mutex_lock(&dataMutex);
     this->init();
     pthread_mutex_unlock(&dataMutex);

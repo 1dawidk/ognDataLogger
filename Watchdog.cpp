@@ -4,7 +4,7 @@
 
 #include "Watchdog.h"
 
-Watchdog::Watchdog(DebugLog *debugLog, OgnLogger *ognLogger) {
+Watchdog::Watchdog(Logger *debugLog, OgnDataPicker *ognLogger) {
     ognInstance= ognLogger;
     this->debugLog= debugLog;
 }

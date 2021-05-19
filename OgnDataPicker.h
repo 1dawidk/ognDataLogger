@@ -1,5 +1,5 @@
-#ifndef OGNDATALOGGER_OGNLOGGER_H
-#define OGNDATALOGGER_OGNLOGGER_H
+#ifndef OGNDATALOGGER_OGNDATAPICKER_H
+#define OGNDATALOGGER_OGNDATAPICKER_H
 
 #include <algorithm>
 #include <exception>
@@ -17,14 +17,14 @@
 #include "cpp-lib/gnss.h"
 #include "cpp-lib/ogn.h"
 #include "cpp-lib/util.h"
-#include "DebugLog.h"
+#include "Logger.h"
 #include "dkulpaclibs/misc/Thread.h"
 
 using namespace cpl::util::network;
 
-class OgnLogger{
+class OgnDataPicker{
 public:
-    OgnLogger(DebugLog *debugLog, const char *dataDir, const char *filter);
+    OgnDataPicker(Logger *log, const char *dataDir, const char *filter);
     std::string getDataDir();
     void readDataFile(std::vector<std::string> &fileLines);
     void resetDataFileStream();
@@ -45,7 +45,7 @@ private:
     volatile int lastKALog;
     cpl::ogn::aprs_parser *parser;
 
-    DebugLog *debugLog;
+    Logger *log;
     std::ofstream dataStream;
 
     std::string filter;
@@ -61,4 +61,4 @@ private:
 };
 
 
-#endif //OGNDATALOGGER_OGNLOGGER_H
+#endif //OGNDATALOGGER_OGNDATAPICKER_H

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-message("-- Cpp-lib cmake file")
+message("-- ognAPI cmake file")
 message("-- Project source directory: ${PROJECT_SOURCE_DIR}")
 
 # This is a C++17 project

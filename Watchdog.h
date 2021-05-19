@@ -7,20 +7,20 @@
 
 
 #include <dkulpaclibs/misc/Thread.h>
-#include "OgnLogger.h"
+#include "OgnDataPicker.h"
 
 class Watchdog : public Thread {
 
 public:
-    Watchdog(DebugLog *debugLog, OgnLogger *ognLogger);
+    Watchdog(Logger *debugLog, OgnDataPicker *ognLogger);
 protected:
     void onStart() override;
     void onRun() override;
     void onStop() override;
 
 private:
-    OgnLogger *ognInstance;
-    DebugLog *debugLog;
+    OgnDataPicker *ognInstance;
+    Logger *debugLog;
 };
 
 
