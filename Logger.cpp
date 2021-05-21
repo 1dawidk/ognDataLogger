@@ -14,8 +14,8 @@ Logger::Logger(string debugFileName) {
 void Logger::write(const char *tag, const char *msg) {
     pthread_mutex_lock(&streamMutex);
     char ts[16];
-    sprintf(ts, "%02d-%02d-%04d %02d:%02d", Clock::getDay(), Clock::getMonth(),
-            Clock::getYear(), Clock::getHour(), Clock::getMinutes());
+    sprintf(ts, "%02d-%02d-%04d %02d:%02d", Clock::nowDay(), Clock::nowMonth(),
+            Clock::nowYear(), Clock::nowHour(), Clock::nowMinutes());
     debugStream << ts << ", " << tag << ", " << msg << endl;
     pthread_mutex_unlock(&streamMutex);
 }

@@ -42,7 +42,7 @@ private:
 
     double const utc=-1;
     double utc_parsed;
-    volatile int lastKALog;
+    volatile long lastKALog;
     cpl::ogn::aprs_parser *parser;
 
     Logger *log;

@@ -18,7 +18,7 @@ void OgnDataPicker::init() {
     is.reset(new instream(*c));
     keepalive.reset(new onstream(*c));
     cpl::ogn::login(std::cout, *keepalive, *is, "ognDataLogger v2.0.0", filter);
-    lastKALog= Clock::GetDayMinutes();
+    lastKALog= Clock::sinceEpochM();
 
     utc_parsed= 0;
 
@@ -39,7 +39,7 @@ void OgnDataPicker::exec() {
         if (keepalive) {
             *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
             log->write("OgnDataPicker", "Keepalive [ OK ]");
-            lastKALog= Clock::GetDayMinutes();
+            lastKALog= Clock::sinceEpochM();
         } else {
             log->write("OgnDataPicker", string("Keepalive [ ERROR ]: " + line).c_str());
         }
