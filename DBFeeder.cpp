@@ -15,7 +15,7 @@ void DBFeeder::onStart() {
 }
 
 void DBFeeder::onRun() {
-    uint8_t now= (uint8_t)Clock::getHour();
+    uint8_t now= (uint8_t)Clock::nowHour();
 
     if( lastHour!=now ) {
         vector<string> fileLines;
