@@ -17,7 +17,7 @@
 #include "cpp-lib/gnss.h"
 #include "cpp-lib/ogn.h"
 #include "cpp-lib/util.h"
-#include "Logger.h"
+#include "dkulpaclibs/misc/Logger.h"
 #include "dkulpaclibs/misc/Thread.h"
 
 using namespace cpl::util::network;

@@ -7,6 +7,7 @@
 #include <fstream>
 #include "dkulpaclibs/misc/Thread.h"
 #include "dkulpaclibs/misc/Clock.h"
+#include "dkulpaclibs/misc/Logger.h"
 #include <curl/curl.h>
 #include "OgnDataPicker.h"
 
