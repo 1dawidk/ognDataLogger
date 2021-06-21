@@ -38,6 +38,7 @@ void OgnDataPicker::exec() {
         pthread_mutex_lock(&connectionMutex);
         std::string line;
         std::getline(*is, line);
+        pthread_mutex_unlock(&connectionMutex);
 
         if (line.empty()) {
             return;
@@ -89,7 +90,6 @@ void OgnDataPicker::exec() {
                 log->write("OgnDataPicker", string("# WARNING: Couldn't parse: " + line).c_str());
             }
         }
-        pthread_mutex_unlock(&connectionMutex);
     }
 }
 
