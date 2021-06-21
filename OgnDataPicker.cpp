@@ -7,11 +7,14 @@ OgnDataPicker::OgnDataPicker(Logger *log, const char *dataDir, const char *filte
 
     log->write("OgnDataPicker", "Start logging...");
     dataMutex= PTHREAD_MUTEX_INITIALIZER;
+    connectionMutex= PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_unlock(&dataMutex);
+    pthread_mutex_unlock(&connectionMutex);
 }
 
 
 void OgnDataPicker::init() {
+    pthread_mutex_lock(&connectionMutex);
     parser = new cpl::ogn::aprs_parser(std::clog, cpl::ogn::default_ddb_query_interval());
 
     c = cpl::ogn::connect(std::clog, DEFAULT_HOST, DEFAULT_SERVICE);
@@ -25,60 +28,68 @@ void OgnDataPicker::init() {
     pthread_mutex_lock(&dataMutex);
     dataStream.open(dataDir+"ognDataLogger.data", std::ofstream::app);
     pthread_mutex_unlock(&dataMutex);
+
+    suspend= false;
+    pthread_mutex_unlock(&connectionMutex);
 }
 
 void OgnDataPicker::exec() {
-    std::string line;
-    std::getline(*is, line);
+    if(!suspend) {
+        pthread_mutex_lock(&connectionMutex);
+        std::string line;
+        std::getline(*is, line);
 
-    if (line.empty()) {
-        return;
-    }
-
-    if ('#' == line[0]) {
-        if (keepalive) {
-            *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
-            log->write("OgnDataPicker", "Keepalive [ OK ]");
-            lastKALog= Clock::sinceEpochM();
-        } else {
-            log->write("OgnDataPicker", string("Keepalive [ ERROR ]: " + line).c_str());
-        }
-        return;
-    }
-
-    if (utc <= -2) {
-        if (line.find("TIME ") == 0) {
-            utc_parsed = cpl::util::parse_datetime(line.substr(5));
-            log->write("OgnDataPicker", string("UTC Update [ OK ]: " + line).c_str());
-            return;
-        } else {
-            log->write("OgnDataPicker", string("UTC Update [ ERROR ]: " + line).c_str());
+        if (line.empty()) {
             return;
         }
-    }
 
-    cpl::ogn::aircraft_rx_info_and_name acft;
-    const double utc_now = utc > 0 ? utc : (utc <= -2 ? utc_parsed : cpl::util::utc());
-
-    if (parser->parse_aprs_aircraft(line, acft, utc_now)) {
-
-        if(acft.first.find("ogn")!=std::string::npos && acft.second.mot.speed>4) {
-            std::stringstream ss;
-            ss << acft.first.substr(4) << " " << static_cast<cpl::gnss::position_time const&>(acft.second.pta) << " "
-               << acft.second.mot.course << " " << acft.second.mot.speed;
-
-            pthread_mutex_lock(&dataMutex);
-            dataStream << ss.str() << std::endl;
-            pthread_mutex_unlock(&dataMutex);
+        if ('#' == line[0]) {
+            if (keepalive) {
+                *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
+                log->write("OgnDataPicker", "Keepalive [ OK ]");
+                lastKALog = Clock::sinceEpochM();
+            } else {
+                log->write("OgnDataPicker", string("Keepalive [ ERROR ]: " + line).c_str());
+            }
+            return;
         }
 
-    } else {
-        cpl::ogn::station_info_and_name stat;
-        if (cpl::ogn::parse_aprs_station(line, stat, utc_now)) {
+        if (utc <= -2) {
+            if (line.find("TIME ") == 0) {
+                utc_parsed = cpl::util::parse_datetime(line.substr(5));
+                log->write("OgnDataPicker", string("UTC Update [ OK ]: " + line).c_str());
+                return;
+            } else {
+                log->write("OgnDataPicker", string("UTC Update [ ERROR ]: " + line).c_str());
+                return;
+            }
+        }
+
+        cpl::ogn::aircraft_rx_info_and_name acft;
+        const double utc_now = utc > 0 ? utc : (utc <= -2 ? utc_parsed : cpl::util::utc());
+
+        if (parser->parse_aprs_aircraft(line, acft, utc_now)) {
+
+            if (acft.first.find("ogn") != std::string::npos && acft.second.mot.speed > 4) {
+                std::stringstream ss;
+                ss << acft.first.substr(4) << " " << static_cast<cpl::gnss::position_time const &>(acft.second.pta)
+                   << " "
+                   << acft.second.mot.course << " " << acft.second.mot.speed;
+
+                pthread_mutex_lock(&dataMutex);
+                dataStream << ss.str() << std::endl;
+                pthread_mutex_unlock(&dataMutex);
+            }
 
         } else {
-            log->write("OgnDataPicker", string("# WARNING: Couldn't parse: " + line).c_str());
+            cpl::ogn::station_info_and_name stat;
+            if (cpl::ogn::parse_aprs_station(line, stat, utc_now)) {
+
+            } else {
+                log->write("OgnDataPicker", string("# WARNING: Couldn't parse: " + line).c_str());
+            }
         }
+        pthread_mutex_unlock(&connectionMutex);
     }
 }
 
@@ -102,12 +113,13 @@ void OgnDataPicker::readDataFile(std::vector<std::string> &fileLines) {
     std::ifstream inDataFile;
     inDataFile.open(dataDir+"ognDataLogger.data");
 
-    while ( getline (inDataFile,line) )
-    {
-        fileLines.push_back(line);
-    }
+    if(inDataFile.is_open()) {
+        while (getline(inDataFile, line)) {
+            fileLines.push_back(line);
+        }
 
-    inDataFile.close();
+        inDataFile.close();
+    }
 
     resetDataFileStream();
     pthread_mutex_unlock(&dataMutex);
@@ -126,8 +138,6 @@ int OgnDataPicker::getLastKeepaliveTime() {
 }
 
 void OgnDataPicker::resetConnection() {
-    pthread_mutex_lock(&dataMutex);
+    suspend= true;
     this->init();
-    pthread_mutex_unlock(&dataMutex);
-
 }

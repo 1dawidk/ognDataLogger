@@ -52,6 +52,9 @@ private:
     std::string dataDir;
 
     pthread_mutex_t dataMutex;
+    pthread_mutex_t connectionMutex;
+
+    bool suspend;
 
     const std::string DEFAULT_HOST    = "aprs.glidernet.org";
     const std::string DEFAULT_SERVICE = "14580"             ;
