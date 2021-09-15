@@ -20,8 +20,14 @@ void OgnDataPicker::init() {
     c = cpl::ogn::connect(std::clog, DEFAULT_HOST, DEFAULT_SERVICE);
     is.reset(new instream(*c));
     keepalive.reset(new onstream(*c));
-    cpl::ogn::login(std::cout, *keepalive, *is, "ognDataLogger v2.0.0", filter);
-    lastKALog= Clock::sinceEpochM();
+    try {
+        cpl::ogn::login(std::cout, *keepalive, *is, "ognDataLogger v2.0.0", filter);
+    } catch (const std::runtime_error& e){
+        suspend= true;
+        pthread_mutex_unlock(&connectionMutex);
+        return;
+    }
+    lastKALog= Clock::sinceEpochS();
 
     utc_parsed= 0;
 
@@ -35,6 +41,7 @@ void OgnDataPicker::init() {
 
 void OgnDataPicker::exec() {
     if(!suspend) {
+        suspended = true;
         pthread_mutex_lock(&connectionMutex);
         std::string line;
         std::getline(*is, line);
@@ -48,7 +55,7 @@ void OgnDataPicker::exec() {
             if (keepalive) {
                 *keepalive << "# " << KEEPALIVE_MESSAGE << std::endl;
                 log->write("OgnDataPicker", "Keepalive [ OK ]");
-                lastKALog = Clock::sinceEpochM();
+                lastKALog = Clock::sinceEpochS();
             } else {
                 log->write("OgnDataPicker", string("Keepalive [ ERROR ]: " + line).c_str());
             }
@@ -90,6 +97,7 @@ void OgnDataPicker::exec() {
                 log->write("OgnDataPicker", string("# WARNING: Couldn't parse: " + line).c_str());
             }
         }
+        suspended= false;
     }
 }
 
@@ -138,6 +146,13 @@ int OgnDataPicker::getLastKeepaliveTime() {
 }
 
 void OgnDataPicker::resetConnection() {
+    log->write("OgnDataPicker", "Suspend flag set");
     suspend= true;
+    log->write("OgnDataPicker", "Waiting for suspended state");
+    while(suspended);
+    log->write("OgnDataPicker", "Thread suspended. Now close Data Stream");
+    this->finish();
+    log->write("OgnDataPicker", "Initializing connection...");
     this->init();
+    log->write("OgnDataPicker", "Restart connection [ OK ]");
 }

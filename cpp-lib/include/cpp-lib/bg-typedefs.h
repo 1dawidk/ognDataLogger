@@ -19,6 +19,7 @@
 #ifndef CPL_BG_TYPEDEFS_H
 #define CPL_BG_TYPEDEFS_H
 
+
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/geometries/box.hpp>
 

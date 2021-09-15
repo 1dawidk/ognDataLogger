@@ -55,6 +55,7 @@ private:
     pthread_mutex_t connectionMutex;
 
     bool suspend;
+    bool suspended;
 
     const std::string DEFAULT_HOST    = "aprs.glidernet.org";
     const std::string DEFAULT_SERVICE = "14580"             ;

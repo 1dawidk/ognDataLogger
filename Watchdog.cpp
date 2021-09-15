@@ -14,7 +14,9 @@ void Watchdog::onStart() {
 }
 
 void Watchdog::onRun() {
-    if(ognInstance->getLastKeepaliveTime()+2<Clock::sinceEpochM()){
+    int l= ognInstance->getLastKeepaliveTime()+40;
+    long now= Clock::sinceEpochS();
+    if(l<now){
         debugLog->write("Watchdog", "OGN connection is DEAD. Trying to reconnect");
         ognInstance->resetConnection();
         Thread::pause(120000); // Wait 5min for connection to establish
