@@ -19,7 +19,7 @@ void Watchdog::onRun() {
     if(l<now){
         debugLog->write("Watchdog", "OGN connection is DEAD. Trying to reconnect");
         ognInstance->resetConnection();
-        Thread::pause(120000); // Wait 5min for connection to establish
+        Thread::pause(30000); // Wait 30s for connection to establish
     }
     Thread::pause(1000);
 }

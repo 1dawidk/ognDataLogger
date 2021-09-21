@@ -40,6 +40,8 @@ private:
     std::unique_ptr<std::istream> is;
     std::unique_ptr<std::ostream> keepalive;
 
+    string input;
+
     double const utc=-1;
     double utc_parsed;
     volatile long lastKALog;

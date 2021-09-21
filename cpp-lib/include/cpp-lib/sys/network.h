@@ -764,7 +764,7 @@ struct connection : cpl::util::file::buffer_maker< connection > {
   address_type const& local() const { return local_ ; }
 
   // Returns the internal socket object
-  // TODO: This should be private.
+  // TODO:. This should be private
   std::shared_ptr<cpl::detail_::stream_socket_reader_writer> socket() 
   { return s ; }
 

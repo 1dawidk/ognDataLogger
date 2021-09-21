@@ -15,19 +15,31 @@ OgnDataPicker::OgnDataPicker(Logger *log, const char *dataDir, const char *filte
 
 void OgnDataPicker::init() {
     pthread_mutex_lock(&connectionMutex);
+    lastKALog= Clock::sinceEpochS();
     parser = new cpl::ogn::aprs_parser(std::clog, cpl::ogn::default_ddb_query_interval());
+    input= "";
 
-    c = cpl::ogn::connect(std::clog, DEFAULT_HOST, DEFAULT_SERVICE);
-    is.reset(new instream(*c));
-    keepalive.reset(new onstream(*c));
     try {
-        cpl::ogn::login(std::cout, *keepalive, *is, "ognDataLogger v2.0.0", filter);
-    } catch (const std::runtime_error& e){
-        suspend= true;
+        c = cpl::ogn::connect(std::clog, DEFAULT_HOST, DEFAULT_SERVICE);
+    } catch (const std::exception &e){
+        suspend = true;
         pthread_mutex_unlock(&connectionMutex);
+        log->write("OgnDataPicker", "OGN Server connect [ FAILED ]");
         return;
     }
-    lastKALog= Clock::sinceEpochS();
+
+    c->timeout(40.0);
+    is.reset(new instream(*c));
+    keepalive.reset(new onstream(*c));
+
+    try {
+        cpl::ogn::login(std::cout, *keepalive, *is, "ognDataLogger v2.0.0", filter);
+    } catch (const std::runtime_error& e) {
+        suspend = true;
+        pthread_mutex_unlock(&connectionMutex);
+        log->write("OgnDataPicker", "OGN Server login [ FAILED ]");
+        return;
+    }
 
     utc_parsed= 0;
 
@@ -35,13 +47,14 @@ void OgnDataPicker::init() {
     dataStream.open(dataDir+"ognDataLogger.data", std::ofstream::app);
     pthread_mutex_unlock(&dataMutex);
 
-    suspend= false;
+    lastKALog= Clock::sinceEpochS();
     pthread_mutex_unlock(&connectionMutex);
+    suspend= false;
 }
 
 void OgnDataPicker::exec() {
     if(!suspend) {
-        suspended = true;
+        suspended= false;
         pthread_mutex_lock(&connectionMutex);
         std::string line;
         std::getline(*is, line);
@@ -97,7 +110,8 @@ void OgnDataPicker::exec() {
                 log->write("OgnDataPicker", string("# WARNING: Couldn't parse: " + line).c_str());
             }
         }
-        suspended= false;
+    } else {
+        suspended= true;
     }
 }
 
@@ -149,7 +163,7 @@ void OgnDataPicker::resetConnection() {
     log->write("OgnDataPicker", "Suspend flag set");
     suspend= true;
     log->write("OgnDataPicker", "Waiting for suspended state");
-    while(suspended);
+    while(!suspended);
     log->write("OgnDataPicker", "Thread suspended. Now close Data Stream");
     this->finish();
     log->write("OgnDataPicker", "Initializing connection...");
